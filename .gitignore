@@ -1,0 +1,6 @@
+# Security: Never upload environment variables
+.env
+
+# Documentation/Internal notes
+prompt.md
+blueprint.md

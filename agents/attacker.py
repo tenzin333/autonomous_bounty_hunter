@@ -1,7 +1,6 @@
-from openai import OpenAI
+from core.llm_provider import llm_client
 from core.config import Config
 
-client = OpenAI(api_key=Config.OPENAI_API_KEY)
 
 class AttackerAgent:
     @staticmethod
@@ -10,35 +9,31 @@ class AttackerAgent:
         try:
             with open(file_path, 'r') as f:
                 lines = f.readlines()
-                start = max(0, line_number - window)
-                end = min(len(lines), line_number + window)
+                # Line numbers in Semgrep are 1-indexed
+                idx = line_number - 1
+                start = max(0, idx - window)
+                end = min(len(lines), idx + window)
                 
-                # Add line numbers for the AI to reference accurately
                 context = "".join([f"{i+1}: {lines[i]}" for i in range(start, end)])
                 return context
         except Exception as e:
             return f"Error reading file: {e}"
 
     @staticmethod
-    def validate(finding):
-        """Asks the Triage LLM if the finding is a true positive."""
-        file_path = finding['path']
-        line_no = finding['start']['line']
-        code_snippet = AttackerAgent.get_code_context(file_path, line_no)
-        
-        prompt = f"""
-        Analyze this code for a suspected {finding['extra']['message']}.
-        
-        CODE CONTEXT:
-        {code_snippet}
-        
-        Is this a real, exploitable vulnerability? 
-        Respond in JSON: {{"is_valid": bool, "reason": "string"}}
+    async def validate(finding, code_snippet):
         """
+        Generic validation call. 
+        Works with any OpenAI-compatible API (Ollama, LocalAI, vLLM, OpenAI).
+        """
+        prompt = f"Analyze for {finding['extra']['message']}: {code_snippet}"
         
-        response = client.chat.completions.create(
-            model=Config.TRIAGE_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={ "type": "json_object" }
-        )
-        return response.choices[0].message.content
+        try:
+            response = await llm_client.chat.completions.create(
+                model=Config.TRIAGE_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                # We use a standard JSON prompt to ensure generic compatibility
+                response_format={ "type": "json_object" } 
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"{{\"is_valid\": false, \"reason\": \"Error: {str(e)}\"}}"

@@ -1,7 +1,9 @@
 import os
 from core.scanner import Scanner
-# from agents.attacker import AttackerAgent
-# from agents.patcher import PatcherAgent
+import core.github_client as gh_client
+from core.github_client import GitHubClient
+from agents.attacker import AttackerAgent
+from agents.patcher import PatcherAgent
 
 def start_hunt(repo_url):
     # 1. Setup ephemeral workspace
@@ -51,5 +53,5 @@ def start_hunt(repo_url):
             print(f"✅ PR Opened: {pr_url}")
 
 if __name__ == "__main__":
-    target = "https://github.com/OWASP/NodeGoat" # Example vulnerable repo
+    target = "https://github.com/tenzin333/Nextjs-dashboard" # Example vulnerable repo
     start_hunt(target)

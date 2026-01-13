@@ -1,7 +1,6 @@
-from openai import OpenAI
+from core.llm_provider import llm_client
 from core.config import Config
 
-client = OpenAI(api_key=Config.OPENAI_API_KEY)
 
 class PatcherAgent:
     @staticmethod
@@ -23,7 +22,7 @@ class PatcherAgent:
         3. Only return the FULL updated file content. No conversation.
         """
         
-        response = client.chat.completions.create(
+        response = llm_client.chat.completions.create(
             model=Config.PATCHER_MODEL,
             messages=[
                 {"role": "system", "content": "You only output code, no prose."},

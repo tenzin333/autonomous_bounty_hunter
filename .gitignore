@@ -1,6 +1,11 @@
-# Security: Never upload environment variables
+workspaces/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
 .env
-
-# Documentation/Internal notes
-prompt.md
 blueprint.md
+prompt.mdv
+blueprint.md
+prompt.md

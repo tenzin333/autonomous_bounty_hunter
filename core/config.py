@@ -9,7 +9,11 @@ class Config:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai") # or "huggingface"
     HF_SPACE_URL = os.getenv("HF_SPACE_URL") 
     HF_TOKEN = os.getenv("HF_TOKEN") # Use your HF Read Token
-    
+   
+    #Base url 
+    BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
+    API_KEY = os.getenv("LLM_API_KEY")
+
     # Models
     TRIAGE_MODEL = os.getenv("TRIAGE_MODEL", "gpt-4o-mini")
     PATCHER_MODEL = os.getenv("PATCHER_MODEL", "gpt-4o")

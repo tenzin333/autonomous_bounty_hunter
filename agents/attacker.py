@@ -1,6 +1,7 @@
 from core.llm_provider import llm_client
 from core.config import Config
-
+import asyncio
+import json
 
 class AttackerAgent:
     @staticmethod
@@ -18,22 +19,70 @@ class AttackerAgent:
                 return context
         except Exception as e:
             return f"Error reading file: {e}"
-
     @staticmethod
     async def validate(finding, code_snippet):
-        """
-        Generic validation call. 
-        Works with any OpenAI-compatible API (Ollama, LocalAI, vLLM, OpenAI).
-        """
-        prompt = f"Analyze for {finding['extra']['message']}: {code_snippet}"
+        file_path = finding.get('path', 'Unknown')
+        line_number = finding.get('start', {}).get('line', 0)
+        code = finding.get('extra', {}).get('lines', '')
         
-        try:
-            response = await llm_client.chat.completions.create(
-                model=Config.TRIAGE_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                # We use a standard JSON prompt to ensure generic compatibility
-                response_format={ "type": "json_object" } 
+        system_prompt = (
+            "You are a Security Research API. You ONLY output JSON. "
+            "Your task is to analyze Semgrep findings for exploitability.\n\n"
+            "Example Output:\n"
+            "{\n"
+            "  \"valid\": true,\n"
+            "  \"explanation\": \"The 'keyword' parameter is passed directly to new RegExp() at line 37. An attacker can send 'a+a+a+a+!' to cause ReDoS.\",\n"
+            "  \"severity\": \"CRITICAL\"\n"
+            "}"
             )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"{{\"is_valid\": false, \"reason\": \"Error: {str(e)}\"}}"
+
+        user_prompt = f"""
+            [TARGET DATA]
+            File: {file_path}
+            Line: {line_number}
+            Finding: {finding['extra']['message']}
+            Code Context: 
+            {code_snippet}
+    
+            [INSTRUCTION]
+            Analyze if the 'Code Context' contains the vulnerability described in 'Finding'. 
+            Return a JSON object with 'valid', 'explanation', and 'severity'.
+            """       
+
+        for attempt in range(3):
+            try:
+                response = await llm_client.chat.completions.create(
+                    model=Config.TRIAGE_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    response_format={ "type": "json_object" }
+                )
+
+                raw_content = response.choices[0].message.content
+                clean_content = raw_content.strip()
+                
+                # Cleanup logic
+                if clean_content.startswith("```json"):
+                    clean_content = clean_content.replace("```json", "", 1).replace("```", "", 1).strip()
+                elif clean_content.startswith("```"):
+                    clean_content = clean_content.replace("```", "", 2).strip()
+                
+                return json.loads(clean_content)
+
+            except Exception as e:
+                # If it's a rate limit, we wait and 'continue' the loop for another attempt
+                if "429" in str(e):
+                    wait_time = (attempt + 1) * 5
+                    print(f"Rate limited. Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue  # 🚀 Go to the next attempt
+                
+                # For other errors, log it and return failure immediately
+                print(f"LLM Error: {e}")
+                return {"valid": False, "explanation": f"API Error: {str(e)}"}
+
+        # 🚨 THE FIX: Final fallback if the loop finishes all 3 attempts without returning
+        return {"valid": False, "explanation": "Failed after 3 attempts due to persistent issues."}
+

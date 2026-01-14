@@ -24,17 +24,27 @@ class AttackerAgent:
         file_path = finding.get('path', 'Unknown')
         line_number = finding.get('start', {}).get('line', 0)
         code = finding.get('extra', {}).get('lines', '')
-        
         system_prompt = (
-            "You are a Security Research API. You ONLY output JSON. "
+            "You are a Security Research API. You ONLY output JSON.\n"
             "Your task is to analyze Semgrep findings for exploitability.\n\n"
+            "Rules:\n"
+            "1. Determine whether the Semgrep finding is actually exploitable based ONLY on the provided Code Context.\n"
+            "2. Output a JSON object with `valid`, `explanation`, and `severity`.\n"
+            "3. `valid` must be one of: true, false, or \"inconclusive\".\n"
+            "4. `severity` must be one of: LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN.\n"
+            "5. The explanation must be 1–3 sentences and must reference the relevant code in the provided context.\n"
+            "6. If context is insufficient to decide, set `valid` to \"inconclusive\" and `severity` to \"UNKNOWN\".\n"
+            "7. Never hallucinate or invent code that is not shown.\n"
+            "8. Never contradict yourself. The `valid` field MUST align with the explanation.\n"
+            "9. Only output JSON. Do not include commentary, markdown, or code fences.\n\n"
             "Example Output:\n"
             "{\n"
             "  \"valid\": true,\n"
-            "  \"explanation\": \"The 'keyword' parameter is passed directly to new RegExp() at line 37. An attacker can send 'a+a+a+a+!' to cause ReDoS.\",\n"
+            "  \"explanation\": \"The 'keyword' parameter is passed directly into new RegExp() without sanitization, enabling crafted catastrophic backtracking.\",\n"
             "  \"severity\": \"CRITICAL\"\n"
             "}"
-            )
+        )
+
 
         user_prompt = f"""
             [TARGET DATA]
@@ -85,4 +95,5 @@ class AttackerAgent:
 
         # 🚨 THE FIX: Final fallback if the loop finishes all 3 attempts without returning
         return {"valid": False, "explanation": "Failed after 3 attempts due to persistent issues."}
+
 

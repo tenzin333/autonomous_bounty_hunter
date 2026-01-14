@@ -1,0 +1,166 @@
+import os
+import subprocess
+import asyncio
+import json
+import shutil
+from core.scanner import  Scanner
+from agents.attacker import AttackerAgent
+from agents.patcher import PatcherAgent
+
+def verify_patch(file_path, original_finding_id):
+    """
+    Re-scans a specific file to see if the vulnerability is gone.
+    Returns True if the specific finding ID is no longer present.
+    """
+    print(f"Verifying patch for {file_path}...")
+    
+    # Run semgrep only on the patched file to save time
+    cmd = ["semgrep", "scan", "--config", "auto", "--json", file_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"Verification Scan Failed for {file_path}")
+        return False
+
+    scan_data = json.loads(result.stdout)
+    remaining_findings = scan_data.get('results', [])
+    
+    # Check if the specific finding still exists at this location
+    # Note: line numbers might shift, so we check the rule ID
+    still_vulnerable = any(f['check_id'] == original_finding_id for f in remaining_findings)
+    
+    return not still_vulnerable
+
+
+def start_hunt(repo_url):
+    # 1. Setup Workspace
+    repo_name = repo_url.split("/")[-1]
+    workspace_path = os.path.abspath(f"./workspaces/{repo_name}")
+
+    if os.path.exists(workspace_path):
+        shutil.rmtree(workspace_path)
+    
+    os.makedirs("./workspaces", exist_ok=True)
+    os.system(f"git clone {repo_url} {workspace_path}")
+
+    # 2. Initialize Scanner & Agents
+    scanner = Scanner(workspace_path)
+    attacker = AttackerAgent()
+    patcher = PatcherAgent()
+    
+    vulnerabilities = scanner.run_semgrep()
+    print(f"Found {len(vulnerabilities)} potential issues.")
+
+    #inside your start_hunt loop
+    for finding in vulnerabilities:
+        severity = finding.get('extra', {}).get('severity', 'UNKNOWN')
+
+        file_path = finding.get('path', 'Unkown File')
+        line_number = finding.get('start' , {}).get('line', '??')
+        message = finding.get('extra' , {}).get('message','No message')
+        code_snippet = finding.get('extra', {}).get('lines', '')
+        
+        #skip triage if the finding is just a logging statement
+        if "console.log" in code_snippet.lower():
+            print(f"PRE-TRIAGE SKIP: Ignoring log-related finding at {file_path}:{line_number}")
+            continue
+
+        print(f"Triage checking finding at {file_path}:{line_number}...")
+        # Run the async agent
+        result = asyncio.run(attacker.validate(finding, code_snippet))
+        # --- FIX STARTS HERE ---
+        # Handle the dictionary response correctly
+        if isinstance(result, dict):
+            is_valid = result.get("valid", False)
+
+            # 1. Grab all possible keys
+            raw_reason = (result.get("explanation") or result.get("reason") or result.get("details") or "")
+
+            # 2. If it's still empty, it might be a nested object or the LLM used a different key
+            if not raw_reason.strip():
+                # Fallback: find the first string value that isn't the 'valid' key
+                reasons = [v for k, v in result.items() if isinstance(v, str) and k != 'valid' and v.strip()]
+                reason = reasons[0] if reasons else "Confirmed by LLM (No specific reason provided)"
+            else:
+                reason = raw_reason
+        else:
+            # Fallback for tuple/list
+            is_valid, reason, *extra = result
+        """
+        if is_valid:
+            print("\n" + "="*60)
+            print(f"CRITICAL CONFIRMED: {file_path}:{line_number}")
+            print(f"TYPE: {message}") # This pulls the Semgrep rule name
+            print("-" * 60)
+            print(f"CODE CONTEXT:")
+            print(f"{code_snippet}") # Shows the actual lines from the file
+            print("-" * 60)
+            print(f"ANALYSIS: {reason}")
+    
+            # If you added the payload to your agent:
+            payload = result.get("payload", "N/A")    
+            print(f"EXPLOIT PAYLOAD: {payload}")
+            print("="*60 + "\n")
+        else:
+            print(f"Skipping: {str(reason)[:40]}...")        
+            # Fallback if your agent returns a tuple (is_valid, reason)
+            is_valid, reason, *extra = result
+        """
+
+        if isinstance(result, dict):
+            is_valid = result.get("valid", False)
+            reason = result.get("explanation", "No explanation provided")
+    
+            if is_valid:
+                print(f"\n[VULNERABILITY CONFIRMED]")
+                print("#"*60)
+                print(f"Location: {file_path}:{line_number}")
+                print(f"Impact:   {reason}")
+                print("-"*60)
+               # 1. CREATE BACKUP BEFORE PATCHING
+                backup_path = f"{file_path}.bak"
+                shutil.copy2(file_path, backup_path) # copy2 preserves metadata
+                
+                 #2. Generate the fix using the PatcherAgent
+                # We pass the full content so the LLM has context of imports/style
+                patched_content = asyncio.run(patcher.generate_fix(code_snippet, reason))
+        
+                # 3. Clean the output (removing ``` if the LLM added them)
+                # Note: I recommend adding the 'clean_code_output' helper to your PatcherAgent
+                if "```" in patched_content:
+                # Simple extractor
+                    patched_content = patched_content.split("```")[1]
+                    if patched_content.startswith(("javascript", "js", "python")):
+                        patched_content = "\n".join(patched_content.split("\n")[1:])
+
+                    # 4. Save the patched version
+                    with open(file_path, 'w') as f:
+                        f.write(patched_content)
+                   # 2. INTEGRATE VERIFICATION
+                    finding_id = finding.get('check_id')
+                    success = verify_patch(file_path, finding_id)
+                    
+                    if success:
+                        print(f"VERIFIED: Finding resolved in {file_path}")
+                        # Clean up backup since patch worked
+                        if os.path.exists(backup_path):
+                            os.remove(backup_path)
+                    else:
+                        print(f"FAILED: Finding still present. Rolling back...")
+                        # 4. SAFE ROLLBACK
+                        if os.path.exists(backup_path):
+                            shutil.move(backup_path, file_path)
+                            print(f"Restored {file_path} from backup.")
+                else:
+                    print(f"Error: Backup {backup_path} not found. Manual fix required!")    
+
+            else:
+                # This will now show you WHY it's skipping (e.g., "The code is safe because...")
+                print(f"TRIAGE NEGATIVE: {reason[:100]}...")
+        else:
+            print(f"ERROR: Model failed to return JSON. Raw: {str(result)[:50]}")
+
+
+if __name__ == "__main__":
+    target = "https://github.com/tenzin333/jobpilot2.0" # Example repo
+    start_hunt(target)

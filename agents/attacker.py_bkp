@@ -1,0 +1,109 @@
+from core.llm_provider import llm_client
+from core.config import Config
+import asyncio
+import json
+
+class AttackerAgent:
+    @staticmethod
+    def get_code_context(file_path, line_number, window=15):
+        """Reads specific lines around the vulnerability to save tokens."""
+        try:
+            with open(file_path, 'r') as f:
+                lines = f.readlines()
+                # Line numbers in Semgrep are 1-indexed
+                idx = line_number - 1
+                start = max(0, idx - window)
+                end = min(len(lines), idx + window)
+                
+                context = "".join([f"{i+1}: {lines[i]}" for i in range(start, end)])
+                return context
+        except Exception as e:
+            return f"Error reading file: {e}"
+    @staticmethod
+    async def validate(finding, code_snippet):
+        file_path = finding.get('path', 'Unknown')
+        line_number = finding.get('start', {}).get('line', 0)
+        code = finding.get('extra', {}).get('lines', '')
+
+        system_prompt = (
+    "You are a Security Research API. You ONLY output JSON.\n"
+    "Your task is to analyze Semgrep findings for exploitability based SOLELY on the provided Code Context.\n\n"
+    
+    "STRICT RULES:\n"
+    "1. You MUST base your answer ONLY on the provided Code Context. If the vulnerable pattern is not visible, "
+    "you MUST return valid: false or valid: \"inconclusive\".\n"
+    "2. You MUST NOT assume functionality, code, variables, or behavior that is not explicitly shown.\n"
+    "3. You MUST NOT infer user-controlled input unless the code context explicitly shows it.\n"
+    "4. You MUST NOT hallucinate vulnerabilities.\n"
+    "5. You MUST NOT mark a finding as valid unless the exact vulnerable pattern described in the Semgrep finding "
+    "is present in the provided context.\n\n"
+    
+    "OUTPUT RULES:\n"
+    "6. Output a JSON object with: valid, explanation, severity.\n"
+    "7. `valid` must be one of: true, false, or \"inconclusive\".\n"
+    "8. `severity` must be one of: LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN.\n"
+    "9. The explanation must be 1–3 sentences and reference ONLY code from the provided context.\n"
+    "10. If the context is insufficient to confirm the pattern, set valid: \"inconclusive\" and severity: \"UNKNOWN\".\n"
+    "11. The value of `valid` MUST match the explanation. Never contradict yourself.\n"
+    "12. You must output pure JSON with NO markdown, NO code fences, NO commentary.\n\n"
+    
+    "Example Output:\n"
+    "{\n"
+    "  \"valid\": true,\n"
+    "  \"explanation\": \"The 'keyword' parameter is passed directly into new RegExp() without sanitization, enabling crafted catastrophic backtracking.\",\n"
+    "  \"severity\": \"CRITICAL\"\n"
+    "}"
+        )        
+
+
+        user_prompt = f"""
+            [TARGET DATA]
+            File: {file_path}
+            Line: {line_number}
+            Finding: {finding['extra']['message']}
+            Code Context: 
+            {code_snippet}
+    
+            [INSTRUCTION]
+            Analyze if the 'Code Context' contains the vulnerability described in 'Finding'. 
+            Return a JSON object with 'valid', 'explanation', and 'severity'.
+            """       
+
+        for attempt in range(3):
+            try:
+                response = await llm_client.chat.completions.create(
+                    model=Config.TRIAGE_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    response_format={ "type": "json_object" }
+                )
+
+                raw_content = response.choices[0].message.content
+                clean_content = raw_content.strip()
+                
+                # Cleanup logic
+                if clean_content.startswith("```json"):
+                    clean_content = clean_content.replace("```json", "", 1).replace("```", "", 1).strip()
+                elif clean_content.startswith("```"):
+                    clean_content = clean_content.replace("```", "", 2).strip()
+                
+                return json.loads(clean_content)
+
+            except Exception as e:
+                # If it's a rate limit, we wait and 'continue' the loop for another attempt
+                if "429" in str(e):
+                    wait_time = (attempt + 1) * 5
+                    print(f"Rate limited. Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue  # 🚀 Go to the next attempt
+                
+                # For other errors, log it and return failure immediately
+                print(f"LLM Error: {e}")
+                return {"valid": False, "explanation": f"API Error: {str(e)}"}
+
+        # 🚨 THE FIX: Final fallback if the loop finishes all 3 attempts without returning
+        return {"valid": False, "explanation": "Failed after 3 attempts due to persistent issues."}
+
+

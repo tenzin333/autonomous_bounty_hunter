@@ -1,0 +1,37 @@
+from core.llm_provider import llm_client
+from core.config import Config
+import asyncio
+
+class PatcherAgent:
+    @staticmethod
+    async def generate_fix(file_content, vulnerability_desc):
+        """Generates a patched version of the file."""
+
+        prompt = f"""
+            You are a Senior Security Engineer. 
+            VULNERABILITY: {vulnerability_desc}
+
+            I need you to fix a Regular Expression Denial of Service (ReDoS) risk.
+            PREFERRED FIX: 
+            - Use a helper function to escape special characters in the user input.
+            - OR use a try/catch block with a timeout-ready regex implementation.
+    
+            ORIGINAL FILE CONTENT:
+            ---
+            {file_content}
+            ---
+
+            Return ONLY the full code. No markdown formatting.
+            """ 
+        
+        response = await llm_client.chat.completions.create(
+            model=Config.PATCHER_MODEL,
+            messages=[
+                {"role": "system", "content": "You only output code, no prose."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2 # Lower temperature for stable code generation
+        )
+        
+        return response.choices[0].message.content
+

@@ -1,34 +1,84 @@
 from core.llm_provider import llm_client
 from core.config import Config
-
+import asyncio
 
 class PatcherAgent:
     @staticmethod
-    def generate_fix(file_content, vulnerability_desc):
-        """Generates a patched version of the file."""
+    async def generate_fix(file_content, vulnerability_desc):
+        """
+        Generates a patched version of the full file content.
         
-        prompt = f"""
-        You are a Senior Security Engineer. 
-        VULNERABILITY: {vulnerability_desc}
-        
-        ORIGINAL FILE CONTENT:
+        Args:
+            file_content (str): The entire content of the file to be fixed.
+            vulnerability_desc (str): The explanation provided by the AttackerAgent.
+            
+        Returns:
+            str: The full file content with the security fix applied.
+        """
+        system_prompt = (
+    "You are a Senior Security Engineer. You ONLY output raw source code.\n"
+    "Semgrep is flagging ReDoS because of 'new RegExp(variable)'.\n\n"
+    "STRICT REMEDIATION PATTERN:\n"
+    "1. You MUST define this EXACT function at the top of the file:\n"
+    "   const escapeRegExp = (string) => { return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'); };\n"
+    "2. For every 'new RegExp(X)', you MUST change it to 'new RegExp(escapeRegExp(X))'.\n"
+    "3. For 'unsafe-formatstring', change 'console.log(variable)' to 'console.log(\"%s\", variable)'.\n\n"
+    "Return the FULL file content. No markdown. No explanations."
+        )
+
+        user_prompt = f"""
+        [VULNERABILITY DETAILS]
+        {vulnerability_desc}
+
+        [TASK]
+        1. Apply the fixes to the FULL FILE CONTENT provided below.
+        2. Use the 'escapeRegExp' pattern mentioned above to resolve all ReDoS issues.
+        3. Maintain the exact same coding style and indentation.
+        4. Return the ENTIRE updated file content.
+
+        [FULL FILE CONTENT]
         ---
         {file_content}
         ---
-        
-        TASK:
-        1. Fix the vulnerability.
-        2. Keep the exact same coding style, indentation, and variable naming.
-        3. Only return the FULL updated file content. No conversation.
         """
         
-        response = llm_client.chat.completions.create(
-            model=Config.PATCHER_MODEL,
-            messages=[
-                {"role": "system", "content": "You only output code, no prose."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2 # Lower temperature for stable code generation
-        )
-        
-        return response.choices[0].message.content
+        for attempt in range(3):
+            try:
+                response = await llm_client.chat.completions.create(
+                    model=Config.PATCHER_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.2  # Lower temperature for stable code generation
+                )
+
+                patched_code = response.choices[0].message.content.strip()
+
+                # Robust Cleanup: Remove markdown if the model ignored the instruction
+                if patched_code.startswith("```"):
+                    # Split by backticks and find the largest block of code
+                    parts = patched_code.split("```")
+                    for part in parts:
+                        clean_part = part.strip()
+                        # Skip empty parts and language identifiers
+                        if clean_part and not clean_part.lower().startswith(("javascript", "js", "python", "typescript", "json")):
+                            return clean_part
+                        elif clean_part.lower().startswith(("javascript", "js", "python", "typescript")):
+                            # Handle blocks that start with a language name
+                            return "\n".join(clean_part.split("\n")[1:]).strip()
+                
+                return patched_code
+
+            except Exception as e:
+                if "429" in str(e):
+                    wait_time = (attempt + 1) * 5
+                    print(f"Patcher rate limited. Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                
+                print(f"Patcher LLM Error: {e}")
+                # Return original content if patching fails to avoid breaking main.py
+                return file_content
+
+        return file_content

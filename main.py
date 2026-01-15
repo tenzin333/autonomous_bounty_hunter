@@ -103,7 +103,7 @@ async def start_hunt(repo_full_name):
     # 3. Triage Phase
     for finding in vulnerabilities:
         file_path = finding.get('path')
-        print(f"\nLooking for ${path}...")
+        print(f"\nLooking for ${file_path}...")
         if not file_path or not os.path.exists(file_path): 
             print("File not found, skipping.")
             continue

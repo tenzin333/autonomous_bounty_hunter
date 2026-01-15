@@ -1,0 +1,12 @@
+[
+  {
+    "file": "/home/tenth/projects/autonomous_bounty_hunter/workspaces/jobpilot2.0/jobpilot-backend/src/utils/jobUtils.js",
+    "lines": [
+      42
+    ],
+    "remaining_ids": [
+      "javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring"
+    ],
+    "reason": "AI patch did not satisfy Semgrep scanner."
+  }
+]

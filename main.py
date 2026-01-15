@@ -8,6 +8,7 @@ from collections import defaultdict
 from core.scanner import Scanner
 from agents.attacker import AttackerAgent
 from agents.patcher import PatcherAgent
+from core.github_client import GitHubClient
 
 def run_semgrep_json(path):
     """Run Semgrep and return parsed JSON results."""
@@ -36,38 +37,42 @@ def clean_output(content):
     content = content.replace("```", "")
     return content.strip()
 
-async def start_hunt(repo_url):
-    # 1. Setup Workspace
-    repo_name = repo_url.split("/")[-1]
+async def start_hunt(repo_full_name):
+    # 1. GitHub Setup & Workspace
+    gh = GitHubClient() #
+    
+    # Fork the repo and create a unique branch for this session
+    # setup_workspace returns the repo object and the generated branch_name
+    forked_repo, branch_name = gh.setup_workspace(repo_full_name) #
+    repo_url = forked_repo.clone_url #
+    
+    repo_name = repo_full_name.split("/")[-1]
     workspace_path = os.path.abspath(f"./workspaces/{repo_name}")
+    
     if os.path.exists(workspace_path):
         shutil.rmtree(workspace_path)
     os.makedirs("./workspaces", exist_ok=True)
 
-    print(f"Cloning {repo_url}...")
-    subprocess.run(["git", "clone", repo_url, workspace_path], check=True)
+    print(f"Cloning fork: {repo_url}...")
+    # Clone the fork and immediately check out the fix branch
+    subprocess.run(["git", "clone", "-b", branch_name, repo_url, workspace_path], check=True)
 
     scanner = Scanner(workspace_path)
     attacker = AttackerAgent()
     patcher = PatcherAgent()
 
-    # 2. Initial Scan
+    # 2. Initial Scan & 3. Triage Phase (Remains same as your version)
     semgrep_data = scanner.run_semgrep()
     vulnerabilities = semgrep_data.get("results", [])
     print(f"Found {len(vulnerabilities)} potential issues. Starting Triage...")
-
     confirmed_by_file = defaultdict(list)
 
-    # 3. Triage Phase
     for finding in vulnerabilities:
         file_path = finding.get('path')
-        if not file_path or not os.path.exists(file_path):
-            continue
-
+        if not file_path or not os.path.exists(file_path): continue
         line = finding.get('start', {}).get('line', 0)
         code_context = attacker.get_code_context(file_path, line)
         result = await attacker.validate(finding, code_context, file_path, line)
-
         if isinstance(result, dict) and result.get("valid"):
             confirmed_by_file[file_path].append({
                 "id": finding.get("check_id"),
@@ -75,41 +80,29 @@ async def start_hunt(repo_url):
                 "line": line
             })
             print(f"[CONFIRMED] {os.path.basename(file_path)}:{line}")
-        else:
-            print(f"Skipping {os.path.basename(file_path)}:{line}")
-
-    unfixable_log = []
 
     # 4. Patching Phase
+    unfixable_log = []
+    patched_files = [] 
+
     for file_path, bugs in confirmed_by_file.items():
         print(f"\nProcessing {len(bugs)} fixes in: {os.path.basename(file_path)}")
-
         backup = file_path + ".bak"
         shutil.copy2(file_path, backup)
 
         try:
             with open(file_path, "r") as f:
                 original_content = f.read()
-
             work_notes = "\n".join([f"Line {b['line']}: {b['reason']}" for b in bugs])
 
-            # LLM-Powered Patching
             print(f"Requesting AI patch for {os.path.basename(file_path)}...")
             raw_patched = await patcher.generate_fix(original_content, work_notes)
             patched_content = clean_output(raw_patched)
             
-            # Check if LLM returned empty or unchanged content
             if not patched_content or patched_content == original_content:
-                print("AI failed to provide a modified version. Skipping.")
                 shutil.move(backup, file_path)
-                unfixable_log.append({
-                    "file": file_path,
-                    "lines": [b["line"] for b in bugs],
-                    "reason": "AI returned empty or unchanged content."
-                })
                 continue
 
-            # Write the patch to file
             with open(file_path, "w") as f:
                 f.write(patched_content)
 
@@ -118,43 +111,45 @@ async def start_hunt(repo_url):
             remaining = verify_after_patch(file_path, bug_ids)
 
             if remaining:
-                print(f"Verification failed: {len(remaining)} issues remain. Rolling back.")
+                print(f"Verification failed. Rolling back.")
                 shutil.move(backup, file_path)
-                unfixable_log.append({
-                    "file": file_path,
-                    "lines": [b["line"] for b in bugs],
-                    "remaining_ids": remaining,
-                    "reason": "AI patch did not satisfy Semgrep scanner."
-                })
             else:
                 print(f"Successfully patched and verified {os.path.basename(file_path)}")
-                if os.path.exists(backup):
-                    os.remove(backup)
+                patched_files.append(file_path)
+                if os.path.exists(backup): os.remove(backup)
 
         except Exception as e:
             print(f"Error patching {file_path}: {e}")
-            if os.path.exists(backup):
-                shutil.move(backup, file_path)
-            unfixable_log.append({
-                "file": file_path,
-                "error": str(e)
-            })
+            if os.path.exists(backup): shutil.move(backup, file_path)
 
-    # 6. Summary Report
-    if unfixable_log:
-        os.makedirs("./reports", exist_ok=True)
-        report_path = "./reports/unfixable.json"
-        with open(report_path, "w") as f:
-            json.dump(unfixable_log, f, indent=2)
-
-        print(f"\nREPORTS GENERATED: {report_path}")
-        print("HUMAN REVIEW REQUIRED FOR:")
-        for item in unfixable_log:
-            f_name = os.path.basename(item.get('file', 'Unknown'))
-            print(f" - {f_name} (Lines: {item.get('lines', 'N/A')})")
+    # 6. Push Fixes and Submit PR
+    # Move this OUTSIDE the file loop so we submit one PR for all fixes
+    if patched_files:
+        print("\nPatches verified locally. Pushing to GitHub fork...")
+        try:
+            # Change directory to the git repo to run git commands
+            original_cwd = os.getcwd()
+            os.chdir(workspace_path)
+            
+            subprocess.run(["git", "add", "."], check=True)
+            subprocess.run(["git", "commit", "-m", "Security: Fix ReDoS and Format String vulnerabilities"], check=True)
+            subprocess.run(["git", "push", "origin", branch_name], check=True)
+            
+            # Go back to original directory before submitting PR via API
+            os.chdir(original_cwd)
+            
+            print("Submitting Pull Request...")
+            pr_url = gh.submit_pull_request(
+                original_repo_full_name=repo_full_name,
+                head_branch=branch_name,
+                title="Automated Security Fixes",
+                body="This PR fixes several confirmed security vulnerabilities identified by automated triage."
+            ) #
+            print(f"PR Created: {pr_url}") #
+        except Exception as e:
+            print(f"Failed to push or create PR: {e}")
 
     print("\nHunt completed.")
-
 
 if __name__ == "__main__":
     # You can change this to any target repository

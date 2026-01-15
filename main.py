@@ -9,7 +9,7 @@ from core.scanner import Scanner
 from agents.attacker import AttackerAgent
 from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
-from contract.web3 import BlockchainLogger
+from contracts.web3 import BlockchainLogger
 from core.config import Config  
 
 def generate_professional_pr_body(confirmed_patches, repo_name):

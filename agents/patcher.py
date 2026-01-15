@@ -16,16 +16,15 @@ class PatcherAgent:
             str: The full file content with the security fix applied.
         """
         system_prompt = (
-    "You are a Senior Security Engineer. You ONLY output raw source code.\n"
-    "Semgrep is flagging ReDoS because of 'new RegExp(variable)'.\n\n"
-    "STRICT REMEDIATION PATTERN:\n"
-    "1. You MUST define this EXACT function at the top of the file:\n"
-    "   const escapeRegExp = (string) => { return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'); };\n"
-    "2. For every 'new RegExp(X)', you MUST change it to 'new RegExp(escapeRegExp(X))'.\n"
-    "3. For 'unsafe-formatstring', change 'console.log(variable)' to 'console.log(\"%s\", variable)'.\n\n"
-    "Return the FULL file content. No markdown. No explanations."
-        )
-
+    "You are a Senior Security Engineer. You ONLY output raw source code.\n\n"
+    "CRITICAL RULE: To fix ReDoS, you must do TWO things:\n"
+    "1. Define this helper at the top: const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\\\\\\]]/g, '\\\\$&');\n"
+    "2. SEARCH the file for 'new RegExp(...)'. You MUST wrap the first argument in 'escapeRegExp()'.\n"
+    "   Example: change 'new RegExp(searchTerm)' to 'new RegExp(escapeRegExp(searchTerm))'.\n\n"
+    "REJECTION CRITERIA: If you add the helper but do not wrap the variables in the code, the patch will fail.\n"
+    "Maintain all existing functionality and indentation. Return the FULL file."
+        )    
+        
         user_prompt = f"""
         [VULNERABILITY DETAILS]
         {vulnerability_desc}

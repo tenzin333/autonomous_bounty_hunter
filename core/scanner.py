@@ -8,7 +8,7 @@ class Scanner:
         self.repo_path = os.path.abspath(repo_path)
 
     def run_semgrep(self):
-        print(f"🔍 Scanning repository: {self.repo_path}")
+        print(f"Scanning repository: {self.repo_path}")
 
         env = os.environ.copy()
         env["PYTHONUTF8"] = "1"

@@ -134,10 +134,14 @@ OPENAI_API_KEY=your_openai_key
 GITHUB_TOKEN=your_github_token
 AGENT_PRIVATE_KEY=your_wallet_private_key
 RPC_URL=https://polygon-amoy.infura.io/v3/<project_id>
+CONTRACT_ADDRESS=0xd22
+BOUNTY_HUB_ABI=./abis/BountyHub.json
+COMMITMENT_SALT=sfgsdfg
+AGENT_PRIVATE_KEY=adsfdfsd
 
 # Model Selection
-TRIAGE_MODEL=gpt-4o-mini
-PATCHER_MODEL=gpt-4o
+TRIAGE_MODEL=llama-3.1-8b-instant
+PATCHER_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 
 # Runtime Mode
 ENVIRONMENT=development

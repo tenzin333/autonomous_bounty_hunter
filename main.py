@@ -12,7 +12,7 @@ from core.github_client import GitHubClient
 
 def run_semgrep_json(path):
     """Run Semgrep and return parsed JSON results."""
-    # Use p/default and p/security-audit for verification to match initial scan
+    # Using 'auto' config for verification to ensure the patch satisfies the scanner
     cmd = ["semgrep", "scan", "--config", "auto", "--json", path]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode not in (0, 1):
@@ -26,25 +26,22 @@ def verify_after_patch(file_path, original_ids):
     """Rescan the file and return list of original IDs that still exist."""
     scan_results = run_semgrep_json(file_path)
     remaining_ids = [r['check_id'] for r in scan_results.get('results', [])]
-    # Return only the IDs we were specifically trying to fix
+    # Filter to see if the specific IDs we were targeting are still there
     return [oid for oid in original_ids if oid in remaining_ids]
 
 def clean_output(content):
     """Aggressively strip markdown fences and language labels from LLM output."""
-    # Remove ```javascript, ```js, etc.
     content = re.sub(r"```[a-zA-Z]*\n?", "", content)
-    # Remove closing fences
     content = content.replace("```", "")
     return content.strip()
 
 async def start_hunt(repo_full_name):
     # 1. GitHub Setup & Workspace
-    gh = GitHubClient() #
+    gh = GitHubClient()
     
-    # Fork the repo and create a unique branch for this session
-    # setup_workspace returns the repo object and the generated branch_name
+    # Fork the repo and create a unique branch via API
     forked_repo, branch_name = gh.setup_workspace(repo_full_name) #
-    repo_url = forked_repo.clone_url #
+    repo_url = forked_repo.clone_url 
     
     repo_name = repo_full_name.split("/")[-1]
     workspace_path = os.path.abspath(f"./workspaces/{repo_name}")
@@ -54,25 +51,30 @@ async def start_hunt(repo_full_name):
     os.makedirs("./workspaces", exist_ok=True)
 
     print(f"Cloning fork: {repo_url}...")
-    # Clone the fork and immediately check out the fix branch
+    # Clone the fork and checkout the generated branch
     subprocess.run(["git", "clone", "-b", branch_name, repo_url, workspace_path], check=True)
 
     scanner = Scanner(workspace_path)
     attacker = AttackerAgent()
     patcher = PatcherAgent()
 
-    # 2. Initial Scan & 3. Triage Phase (Remains same as your version)
+    # 2. Initial Scan
     semgrep_data = scanner.run_semgrep()
     vulnerabilities = semgrep_data.get("results", [])
     print(f"Found {len(vulnerabilities)} potential issues. Starting Triage...")
+    
     confirmed_by_file = defaultdict(list)
 
+    # 3. Triage Phase
     for finding in vulnerabilities:
         file_path = finding.get('path')
         if not file_path or not os.path.exists(file_path): continue
+        
         line = finding.get('start', {}).get('line', 0)
-        code_context = attacker.get_code_context(file_path, line)
-        result = await attacker.validate(finding, code_context, file_path, line)
+        # Use AttackerAgent to get code context and validate exploitability
+        code_context = attacker.get_code_context(file_path, line) #
+        result = await attacker.validate(finding, code_context, file_path, line) #
+        
         if isinstance(result, dict) and result.get("valid"):
             confirmed_by_file[file_path].append({
                 "id": finding.get("check_id"),
@@ -95,11 +97,13 @@ async def start_hunt(repo_full_name):
                 original_content = f.read()
             work_notes = "\n".join([f"Line {b['line']}: {b['reason']}" for b in bugs])
 
+            # Use LLM to generate the code patch
             print(f"Requesting AI patch for {os.path.basename(file_path)}...")
             raw_patched = await patcher.generate_fix(original_content, work_notes)
             patched_content = clean_output(raw_patched)
             
             if not patched_content or patched_content == original_content:
+                print("Patch rejected: No changes made by AI.")
                 shutil.move(backup, file_path)
                 continue
 
@@ -111,8 +115,9 @@ async def start_hunt(repo_full_name):
             remaining = verify_after_patch(file_path, bug_ids)
 
             if remaining:
-                print(f"Verification failed. Rolling back.")
+                print(f"Verification failed: {len(remaining)} issues still detected. Rolling back.")
                 shutil.move(backup, file_path)
+                unfixable_log.append({"file": file_path, "lines": [b["line"] for b in bugs], "reason": "Semgrep still finds issues."})
             else:
                 print(f"Successfully patched and verified {os.path.basename(file_path)}")
                 patched_files.append(file_path)
@@ -122,36 +127,43 @@ async def start_hunt(repo_full_name):
             print(f"Error patching {file_path}: {e}")
             if os.path.exists(backup): shutil.move(backup, file_path)
 
-    # 6. Push Fixes and Submit PR
-    # Move this OUTSIDE the file loop so we submit one PR for all fixes
+    # 6. Push Fixes and Submit Pull Request
     if patched_files:
-        print("\nPatches verified locally. Pushing to GitHub fork...")
+        print("\nPushing verified patches to GitHub...")
+        original_cwd = os.getcwd()
         try:
-            # Change directory to the git repo to run git commands
-            original_cwd = os.getcwd()
             os.chdir(workspace_path)
             
+            # Git operations for commit and push
             subprocess.run(["git", "add", "."], check=True)
-            subprocess.run(["git", "commit", "-m", "Security: Fix ReDoS and Format String vulnerabilities"], check=True)
-            subprocess.run(["git", "push", "origin", branch_name], check=True)
+            subprocess.run(["git", "commit", "-m", "security: fix ReDoS and format string vulnerabilities"], check=True)
+            subprocess.run(["git", "push", "origin", branch_name], check=True) #
             
-            # Go back to original directory before submitting PR via API
             os.chdir(original_cwd)
             
+            # Submit PR back to original repo
             print("Submitting Pull Request...")
             pr_url = gh.submit_pull_request(
-                original_repo_full_name=repo_full_name,
-                head_branch=branch_name,
+                original_repo_full_name=repo_full_name, #
+                head_branch=branch_name, #
                 title="Automated Security Fixes",
-                body="This PR fixes several confirmed security vulnerabilities identified by automated triage."
-            ) #
-            print(f"PR Created: {pr_url}") #
+                body="This PR contains automated security patches for confirmed vulnerabilities."
+            )
+            print(f"PR Successfully Created: {pr_url}")
         except Exception as e:
             print(f"Failed to push or create PR: {e}")
+        finally:
+            os.chdir(original_cwd)
 
+    # 7. Final Report
+    if unfixable_log:
+        os.makedirs("./reports", exist_ok=True)
+        with open("./reports/unfixable.json", "w") as f:
+            json.dump(unfixable_log, f, indent=2)
+    
     print("\nHunt completed.")
 
 if __name__ == "__main__":
-    # You can change this to any target repository
-    target = "https://github.com/tenzin333/jobpilot2.0"
-    asyncio.run(start_hunt(target))
+    # Ensure this name is exactly owner/repo
+    target_repo = "tenzin333/jobpilot2.0" 
+    asyncio.run(start_hunt(target_repo))

@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Semgrep and project requirements
-RUN pip install semgrep openai python-dotenv
+RUN pip install semgrep openai python-dotenv  requests boto3 pandas openai  web3 eth-account streamlit psycopg2-binary sqlalchemy pandas requests uvicorn
 
 WORKDIR /app
 COPY . .

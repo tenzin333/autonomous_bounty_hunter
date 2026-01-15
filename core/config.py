@@ -9,7 +9,14 @@ class Config:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai") # or "huggingface"
     HF_SPACE_URL = os.getenv("HF_SPACE_URL") 
     HF_TOKEN = os.getenv("HF_TOKEN") # Use your HF Read Token
-   
+    
+    #Blockchain 
+    RPC_URL = os.getenv("RPC_URL", "https://rpc.ankr.com/eth_goerli")
+    CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0xYourContractAddressHere")
+    AGENT_PRIVATE_KEY = os.getenv("AGENT_PRIVATE_KEY", "0xYourPrivateKeyHere")  
+    BOUNTY_HUB_ABI = os.getenv("BOUNTY_HUB_ABI", "./abis/BountyHub.json")
+    COMMITMENT_SALT = os.getenv("COMMITMENT_SALT", "your_salt_here")
+    
     #Base url 
     BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
     API_KEY = os.getenv("LLM_API_KEY")

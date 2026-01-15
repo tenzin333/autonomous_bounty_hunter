@@ -1,4 +1,20 @@
+# --- Original Dependencies ---
 PyGithub
 semgrep
 openai
 python-dotenv
+
+
+# --- Blockchain Layer ---
+web3
+eth-account
+
+# --- Web Dashboard & Persistence ---
+streamlit
+psycopg2-binary
+sqlalchemy
+pandas
+
+# --- Deployment Utilities ---
+requests
+uvicorn

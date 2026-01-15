@@ -9,6 +9,8 @@ from core.scanner import Scanner
 from agents.attacker import AttackerAgent
 from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
+from contract.web3 import BlockchainLogger
+from core.config import Config  
 
 def generate_professional_pr_body(confirmed_patches, repo_name):
     """
@@ -189,6 +191,34 @@ async def start_hunt(repo_full_name):
                 body=generated_body
             )
             print(f"PR Successfully Created: {pr_url}")
+            # Log proof on blockchain
+            # 6.5 Blockchain Proof of Work (Dynamic)
+            print("\nGenerating private on-chain proofs...")
+            logger = BlockchainLogger(Config.RPC_URL, Config.AGENT_PRIVATE_KEY)
+            
+            for file_path in patched_files:
+                file_name = os.path.basename(file_path)
+                findings = confirmed_by_file.get(file_path, [])
+                
+                for bug in findings:
+                    vuln_type = bug['id'].split('.')[-1]
+                    
+                    # Log finding on-chain (Commit Phase)
+                    commit_tx = logger.log_finding(repo_full_name, file_name, vuln_type)
+                    
+                    # Save to DB so we can "Reveal" it later
+                    finding_id = db.save_commitment(
+                        repo=repo_full_name,
+                        file=file_name,
+                        vuln=vuln_type,
+                        salt=logger.salt,
+                        commit_hash=commit_tx
+                    )
+                    db.update_pr_url(finding_id, pr_url)
+                    
+                    print(f"Finding saved to DB (ID: {finding_id}) and Blockchain.")
+            
+            
         except Exception as e:
             print(f"Failed to push or create PR: {e}")
         finally:

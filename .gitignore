@@ -1,4 +1,5 @@
 workspaces/
+reports/
 venv/
 .venv/
 env/

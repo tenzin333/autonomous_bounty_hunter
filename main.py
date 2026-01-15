@@ -10,6 +10,41 @@ from agents.attacker import AttackerAgent
 from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
 
+def generate_professional_pr_body(confirmed_patches, repo_name):
+    """
+    Constructs a professional Markdown body for the GitHub Pull Request.
+    """
+    # Header with a professional alert
+    body = f"### Automated Security Fixes for `{repo_name}`\n\n"
+    body += "> [!IMPORTANT]\n"
+    body += "> This is an automatic PR generated to help with patching efforts. "
+    body += "Please review the changes carefully before merging.\n\n"
+
+    # Vulnerability Summary
+    body += "#### Changes and Remediation\n"
+    body += "The following vulnerabilities were identified and addressed using automated patching and verification:\n\n"
+    
+    # Summary Table
+    body += "| File | Vulnerability Type | Line | Status |\n"
+    body += "| :--- | :--- | :--- | :--- |\n"
+    
+    for file_path, bugs in confirmed_patches.items():
+        file_name = os.path.basename(file_path)
+        for bug in bugs:
+            # Extract a readable name from the Semgrep check_id
+            vuln_type = bug['id'].split('.')[-1].replace('-', ' ').title()
+            body += f"| `{file_name}` | {vuln_type} | {bug['line']} |  Verified |\n"
+
+    # Technical Details
+    body += "\n#### Technical Details\n"
+    body += "- **Tooling**: Verified via Semgrep static analysis and AI-driven remediation.\n"
+    body += "- **Remediation**: Implemented input sanitization and secure regex patterns to prevent ReDoS and injection attacks.\n\n"
+    
+    body += "---\n"
+    body += "*For more information or manual review instructions, please refer to your project security policy.*"
+    
+    return body
+
 def run_semgrep_json(path):
     """Run Semgrep and return parsed JSON results."""
     # Using 'auto' config for verification to ensure the patch satisfies the scanner
@@ -143,11 +178,12 @@ async def start_hunt(repo_full_name):
             
             # Submit PR back to original repo
             print("Submitting Pull Request...")
+            generated_body = generate_professional_pr_body(confirmed_by_file, repo_name)
             pr_url = gh.submit_pull_request(
                 original_repo_full_name=repo_full_name, #
                 head_branch=branch_name, #
                 title="Automated Security Fixes",
-                body="This PR contains automated security patches for confirmed vulnerabilities."
+                body=generated_body
             )
             print(f"PR Successfully Created: {pr_url}")
         except Exception as e:

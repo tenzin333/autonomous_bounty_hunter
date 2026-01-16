@@ -248,5 +248,5 @@ async def start_hunt(repo_full_name):
 
 if __name__ == "__main__":
     # Ensure this name is exactly owner/repo
-    target_repo = "tenzin333/jobpilot2.0" 
+    target_repo = config.TARGET_REPO
     asyncio.run(start_hunt(target_repo))

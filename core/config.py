@@ -32,3 +32,5 @@ class Config:
     # Paths
     WORKSPACE_DIR = "./workspaces"
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    
+    TARGET_REPO = os.getenv("TARGET_REPO", "owner/repo")  # e.g., "tenzin333/jobpilot2.0"

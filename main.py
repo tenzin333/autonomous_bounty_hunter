@@ -153,6 +153,7 @@ async def start_hunt(repo_full_name):
             # 5. Verification Phase
             bug_ids = [b["id"] for b in bugs]
             remaining = verify_after_patch(file_path, bug_ids)
+            print(f"Verifying {len(remaining)} patches for {os.path.basename(file_path)}...")
 
             if remaining:
                 print(f"Verification failed: {len(remaining)} issues still detected. Rolling back.")
@@ -162,11 +163,14 @@ async def start_hunt(repo_full_name):
                 print(f"Successfully patched and verified {os.path.basename(file_path)}")
                 patched_files.append(file_path)
                 if os.path.exists(backup): os.remove(backup)
-
+       
         except Exception as e:
             print(f"Error patching {file_path}: {e}")
             if os.path.exists(backup): shutil.move(backup, file_path)
-
+    
+    print("-"*60)
+    
+    print(f"\nPatching complete. {len(patched_files)} files patched and verified.")
     # 6. Push Fixes and Submit Pull Request
     if patched_files:
         print("\nPushing verified patches to GitHub...")

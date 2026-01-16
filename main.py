@@ -1,3 +1,4 @@
+import datetime
 import os
 import subprocess
 import asyncio
@@ -11,6 +12,7 @@ from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
 from contracts.web3 import BlockchainLogger
 from core.config import Config  
+from core.database import Database
 
 def generate_professional_pr_body(confirmed_patches, repo_name):
     """
@@ -75,6 +77,7 @@ def clean_output(content):
 async def start_hunt(repo_full_name):
     # 1. GitHub Setup & Workspace
     gh = GitHubClient()
+    db = Database()
     
     # Fork the repo and create a unique branch via API
     forked_repo, branch_name = gh.setup_workspace(repo_full_name) #
@@ -220,18 +223,25 @@ async def start_hunt(repo_full_name):
                     )
                     db.update_pr_url(finding_id, pr_url)
                     
-                    print(f"Finding saved to DB (ID: {finding_id}) and Blockchain.")
-            
-            
+                    print(f"Finding saved to DB (ID: {finding_id}) and Blockchain.")  
         except Exception as e:
             print(f"Failed to push or create PR: {e}")
         finally:
             os.chdir(original_cwd)
+    else:
+        print("No verified patches to push. Skipping PR creation.")
 
+    print("-"*60)
+    print("\nHunt Summary:")
+    print(f"Total Vulnerabilities Confirmed: {sum(len(v) for v in confirmed_by_file.values())}")
+    print(f"Total Files Patched and Verified: {len(patched_files)}")    
+    print(f"Total Unfixable Issues: {len(unfixable_log)}")
+  
+    
     # 7. Final Report
     if unfixable_log:
         os.makedirs("./reports", exist_ok=True)
-        with open("./reports/unfixable.json", "w") as f:
+        with open(f"./reports/unfixable_${datetime.now().strftime("%Y%m%d%H%M%S")}.json", "w") as f:
             json.dump(unfixable_log, f, indent=2)
     
     print("\nHunt completed.")

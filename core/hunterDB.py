@@ -1,10 +1,11 @@
 import os
 import psycopg2 # Install with: pip install psycopg2-binary
+from config import Config
 
 class HunterDB:
     def __init__(self):
         # On the cloud, we pull the DB URL from environment variables
-        self.db_url = os.getenv("DATABASE_URL") 
+        self.db_url = Config.DATABASE_URL
         self.conn = psycopg2.connect(self.db_url)
         self.create_table()
 

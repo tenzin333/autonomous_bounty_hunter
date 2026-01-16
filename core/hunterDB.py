@@ -1,6 +1,6 @@
 import os
 import psycopg2 # Install with: pip install psycopg2-binary
-from config import Config
+from core.config import Config
 
 class HunterDB:
     def __init__(self):

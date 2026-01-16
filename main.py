@@ -222,7 +222,13 @@ async def start_hunt(repo_full_name):
 
         # Blockchain logging
         log.info("Logging results to blockchain")
-        logger = BlockchainLogger(Config.RPC_URL, Config.AGENT_PRIVATE_KEY)
+        logger = BlockchainLogger(
+                provider_url=Config.RPC_URL,
+                private_key=Config.AGENT_PRIVATE_KEY,
+                contract_address=Config.CONTRACT_ADDRESS,
+                contract_abi_path=Config.BOUNTY_HUB_ABI
+            )
+
 
         for file_path in patched_files:
             file_name = os.path.basename(file_path)

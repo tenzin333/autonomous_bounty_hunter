@@ -1,9 +1,12 @@
 from web3 import Web3
 
+from core.config import Config
+
 class BlockchainLogger:
     def __init__(self, provider_url, private_key):
         self.w3 = Web3(Web3.HTTPProvider(provider_url))
         self.account = self.w3.eth.account.from_key(private_key)
+        self.salt = Config.COMMITMENT_SALT  
         
     def log_finding(self, repo_url, file_path, vuln_type):
         # 1. Generate the hash

@@ -17,6 +17,9 @@ class Config:
     BOUNTY_HUB_ABI = os.getenv("BOUNTY_HUB_ABI", "./abis/BountyHub.json")
     COMMITMENT_SALT = os.getenv("COMMITMENT_SALT", "your_salt_here")
     
+    #Database
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/hunterdb")
+    
     #Base url 
     BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
     API_KEY = os.getenv("LLM_API_KEY")

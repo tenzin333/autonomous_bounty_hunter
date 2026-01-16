@@ -127,7 +127,9 @@ async def start_hunt(repo_full_name):
     unfixable_log = []
     patched_files = []
 
-    # Patching
+    # ============================================================
+    # 🔧 Patching with diagnostics
+    # ============================================================
     for file_path, bugs in confirmed_by_file.items():
         log.info(f"Processing {len(bugs)} issues in {file_path}")
         backup = f"{file_path}.bak"
@@ -141,25 +143,42 @@ async def start_hunt(repo_full_name):
             raw_patched = await patcher.generate_fix(original_content, work_notes)
             patched_content = clean_output(raw_patched)
 
+            # Debug logging
+            if not raw_patched:
+                log.warning(f"{file_path}: LLM returned empty output")
+            elif raw_patched == original_content:
+                log.warning(f"{file_path}: LLM returned identical output")
+
             if not patched_content or patched_content == original_content:
-                log.warning("Patch rejected: No meaningful changes")
-                shutil.move(backup, file_path)
-                continue
-
-            with open(file_path, "w") as f:
-                f.write(patched_content)
-
-            # Verify
-            bug_ids = [b["id"] for b in bugs]
-            remaining = verify_after_patch(file_path, bug_ids)
-
-            if remaining:
-                log.warning(f"Patch failed verification, restoring {file_path}")
+                reason = "LLM produced no meaningful change"
+                log.warning(f"{file_path}: {reason}")
                 shutil.move(backup, file_path)
                 unfixable_log.append({
                     "file": file_path,
                     "lines": [b["line"] for b in bugs],
-                    "reason": "Semgrep still detects issues"
+                    "reason": reason,
+                    "triage": work_notes
+                })
+                continue
+
+            # Write patched file
+            with open(file_path, "w") as f:
+                f.write(patched_content)
+
+            # Verify with Semgrep
+            bug_ids = [b["id"] for b in bugs]
+            remaining = verify_after_patch(file_path, bug_ids)
+
+            if remaining:
+                reason = f"Semgrep still detects: {remaining}"
+                log.warning(f"{file_path}: {reason}")
+                shutil.move(backup, file_path)
+                unfixable_log.append({
+                    "file": file_path,
+                    "lines": [b["line"] for b in bugs],
+                    "reason": reason,
+                    "triage": work_notes,
+                    "patched_preview": patched_content[:200]
                 })
             else:
                 log.info(f"Successfully patched {file_path}")
@@ -168,9 +187,16 @@ async def start_hunt(repo_full_name):
                     os.remove(backup)
 
         except Exception as e:
-            log.error(f"Error patching {file_path}: {e}")
+            reason = f"Exception while patching: {e}"
+            log.error(f"{file_path}: {reason}")
             if os.path.exists(backup):
                 shutil.move(backup, file_path)
+            unfixable_log.append({
+                "file": file_path,
+                "lines": [b["line"] for b in bugs],
+                "reason": reason,
+                "triage": work_notes
+            })
 
     # Commit + PR
     if patched_files:

@@ -18,7 +18,7 @@ class Config:
     COMMITMENT_SALT = os.getenv("COMMITMENT_SALT", "your_salt_here")
     
     #Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/hunterdb")
+    DATABASE_URL = os.getenv("DB_URL", "postgresql://user:password@localhost:5432/hunterdb")
     
     #Base url 
     BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")

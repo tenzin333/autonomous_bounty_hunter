@@ -2,7 +2,7 @@ import os
 import json
 from web3 import Web3
 from core.config import Config
-from core.database import HunterDB # Assuming you have a DB to track findings
+from core.hunterDB import HunterDB # Assuming you have a DB to track findings
 
 class BountyRevealer:
     def __init__(self):

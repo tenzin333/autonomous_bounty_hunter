@@ -12,7 +12,7 @@ from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
 from contracts.web3 import BlockchainLogger
 from core.config import Config  
-from core.database import Database
+from core.hunterDB import HunterDB as Database
 
 def generate_professional_pr_body(confirmed_patches, repo_name):
     """

@@ -7,7 +7,7 @@ from onchain.script.strike_bounty import strike_bounty  # Import your Web3 logic
 
 # ⚙️ Page Configuration
 st.set_page_config(
-    page_title="Gemini Bounty Center", 
+    page_title="Autonomous Bounty Hunter Dashboard", 
     page_icon="🛡️", 
     layout="wide"
 )
@@ -15,7 +15,7 @@ st.set_page_config(
 # 🔗 Database Connection
 @st.cache_resource
 def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    return psycopg2.connect(Config.DATABASE_URL)
 
 conn = get_db_connection()
 

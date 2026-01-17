@@ -13,7 +13,7 @@ from core.scanner import Scanner
 from agents.attacker import AttackerAgent
 from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
-from web3.contracts.BountyBoard import BountyBoard
+from onchain.script.web3 import BlockchainLogger
 from core.config import Config
 from core.hunterDB import HunterDB as Database
 
@@ -79,9 +79,9 @@ async def start_hunt(repo_full_name):
     
     # Initialize Local Blockchain Logger (Anvil)
     try:
-        blockchain = BountyBoard(
+        blockchain = BlockchainLogger(
             provider_url=Config.RPC_URL,
-            private_key=Config.AGENT_PRIVATE_KEY,
+            private_key=Config.PRIVATE_KEY,
             contract_address=Config.CONTRACT_ADDRESS,
             contract_abi_path=Config.BOUNTY_HUB_ABI
         )

@@ -11,10 +11,10 @@ class Config:
     HF_TOKEN = os.getenv("HF_TOKEN") # Use your HF Read Token
     
     #Blockchain 
-    RPC_URL = os.getenv("RPC_URL", "https://rpc.ankr.com/eth_goerli")
-    CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0xYourContractAddressHere")
+    RPC_URL = os.getenv("RPC_URL")
+    CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
     PRIVATE_KEY = os.getenv("PRIVATE_KEY", "0xYourPrivateKeyHere")  
-    BOUNTY_HUB_ABI = os.getenv("BOUNTY_HUB_ABI", "./abis/BountyHub.json")
+    ABI_PATH = os.getenv("ABI_PATH", "./abis/BountyHub.json")
     COMMITMENT_SALT = os.getenv("COMMITMENT_SALT", "your_salt_here")
     
     #Database

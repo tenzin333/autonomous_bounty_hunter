@@ -1,43 +1,91 @@
-from onchain.script.strike_bounty import strike_bounty  # Import your logic
+import streamlit as st
+import pandas as pd
+import psycopg2
+import os
+from core.config import Config
+from onchain.script.strike_bounty import strike_bounty  # Import your Web3 logic
 
-# ... (your existing metrics and dataframe code) ...
+# ⚙️ Page Configuration
+st.set_page_config(
+    page_title="Gemini Bounty Center", 
+    page_icon="🛡️", 
+    layout="wide"
+)
 
-st.divider()
-st.subheader("🎯 Action Center")
+# 🔗 Database Connection
+@st.cache_resource
+def get_db_connection():
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-# Filter for items that are potentially ready to be struck
-# We check if status is 'PR_Submitted' (or your equivalent for 'not yet struck')
-pending_actions = df[df['status'] == 'PR_Submitted']
+conn = get_db_connection()
 
-if pending_actions.empty:
-    st.write("No pending bounties to strike. Keep hunting!")
-else:
-    for _, row in pending_actions.iterrows():
-        with st.expander(f"Action Required: {row['repo']} - {row['vuln_type']}"):
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                st.write(f"**PR URL:** {row['pr_url']}")
-                st.write(f"**On-chain Hash:** `{row['commit_hash']}`")
-            
-            with col2:
-                # This button triggers your Web3 logic!
-                if st.button("Strike Bounty", key=f"btn_{row['id']}"):
-                    with st.spinner("Executing Smart Contract Call..."):
-                        try:
-                            # 1. Call the function
-                            tx_hash = strike_bounty(row['id'], "YOUR_SECRET_OR_LOGIC")
-                            
-                            # 2. Update the Database so it disappears from 'Pending'
-                            with conn.cursor() as cur:
-                                cur.execute(
-                                    "UPDATE findings SET status = 'Revealed' WHERE id = %s", 
-                                    (row['id'],)
-                                )
-                            conn.commit()
-                            
-                            st.success(f"Claimed! Tx: {tx_hash[:10]}...")
-                            st.balloons()
-                            st.rerun() # Refresh UI to update metrics
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+# 🔄 Auto-refresh UI every 60 seconds
+st.fragment(run_every="60s")
+def main():
+    st.title("🛡️ Autonomous Bounty Hunter")
+    st.markdown("### Real-Time Security Operations Dashboard")
+
+    # 📊 Load Data
+    query = "SELECT id, repo, vuln_type, pr_url, commit_hash, status, timestamp, secret_hash FROM findings"
+    df = pd.read_sql(query, conn)
+
+    # 📈 Summary Metrics
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Vulnerabilities", len(df))
+    c2.metric("Active PRs", len(df[df['status'] == 'PR_Submitted']))
+    c3.metric("Bounties Claimed", len(df[df['status'] == 'Revealed']), delta="Live", delta_color="normal")
+
+    # 🎯 Action Center (The "Striker")
+    st.divider()
+    st.subheader("🎯 Ready to Strike")
+    
+    # We look for PRs that are submitted but not yet 'Revealed' on-chain
+    pending = df[df['status'] == 'PR_Submitted']
+    
+    if pending.empty:
+        st.info("No bounties currently eligible for striking. The agent is still hunting.")
+    else:
+        for _, row in pending.iterrows():
+            with st.expander(f"📦 {row['repo']} - {row['vuln_type']}"):
+                col_info, col_btn = st.columns([3, 1])
+                with col_info:
+                    st.write(f"**PR Link:** {row['pr_url']}")
+                    st.write(f"**Commit Hash:** `{row['commit_hash']}`")
+                with col_btn:
+                    if st.button("Claim Bounty", key=f"strike_{row['id']}"):
+                        with st.spinner("Broadcasting to Blockchain..."):
+                            try:
+                                # Trigger Web3 transaction
+                                tx_hash = strike_bounty(row['id'], row['secret_hash'])
+                                
+                                # Update Database
+                                with conn.cursor() as cur:
+                                    cur.execute(
+                                        "UPDATE findings SET status = 'Revealed' WHERE id = %s", 
+                                        (row['id'],)
+                                    )
+                                conn.commit()
+                                
+                                st.success(f"Success! Tx: {tx_hash[:10]}...")
+                                st.balloons()
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Transaction Failed: {e}")
+
+    # 📜 Latest Activity Feed
+    st.divider()
+    st.subheader("🕵️ Recent Hunt Activity")
+    
+    # Using column_config to make the PR links clickable in the table
+    st.dataframe(
+        df.sort_values(by='timestamp', ascending=False),
+        column_config={
+            "pr_url": st.column_config.LinkColumn("Pull Request"),
+            "commit_hash": st.column_config.TextColumn("On-Chain Proof"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )
+
+if __name__ == "__main__":
+    main()

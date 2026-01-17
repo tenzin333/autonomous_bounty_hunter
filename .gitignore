@@ -4,9 +4,12 @@ reports/
 venv/
 .venv/
 env/
+out/
+env_*/
 __pycache__/
 *.pyc
 .env
+.env_bkp
 blueprint.md
 prompt.mdv
 blueprint.md

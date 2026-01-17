@@ -1,0 +1,21 @@
+name: Bounty Striker
+on:
+  schedule:
+    - cron: '0 * * * *' # Every hour
+  workflow_dispatch:      # Manual trigger button
+jobs:
+  strike:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+      - name: Run Striker
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+        run: python onchain/script/strike_bounty.py

@@ -2,13 +2,14 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 import os
+from core.config import Config
 
 st.set_page_config(page_title="Gemini Bounty Center", layout="wide")
 
 # Connect to the same DB the Agent uses
 conn = psycopg2.connect(os.getenv("DATABASE_URL"))
 
-st.title("Gemini Autonomous Bounty Hunter")
+st.title("Autonomous Bounty Hunter")
 st.markdown("### Real-Time Security Operations Dashboard")
 
 # Summary Metrics
@@ -23,4 +24,4 @@ st.subheader("Latest Activity Feed")
 st.dataframe(df.sort_values(by='timestamp', ascending=False), use_container_width=True)
 
 # Interactive Map or Graph (Optional Portfolio Flair)
-st.info("Agent is currently scanning: `github.com/trending`")
+st.info("Agent is currently scanning")

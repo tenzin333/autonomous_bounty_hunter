@@ -26,3 +26,15 @@ class HunterDB:
         with self.conn.cursor() as cur:
             cur.execute(query)
         self.conn.commit()
+
+    def save_commitment(self, repo, file, vuln, salt, commit_hash, pr_url=""):
+        query = """
+        INSERT INTO findings (repo, file, vuln_type, salt, commit_hash, pr_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(query, (repo, file, vuln, salt, commit_hash, pr_url))
+            self.conn.commit()  
+        except Exception as e:
+            log.error(f"Failed to save to DB , {e}")

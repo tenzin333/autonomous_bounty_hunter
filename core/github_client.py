@@ -4,7 +4,7 @@ import time
 
 class GitHubClient:
     def __init__(self):
-        self.gh = Github(Config.GITHUB_TOKEN)
+        self.gh = Github(Config.GH_TOKEN)
         self.user = self.gh.get_user()
 
     def setup_workspace(self, repo_full_name):

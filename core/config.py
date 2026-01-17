@@ -13,7 +13,7 @@ class Config:
     #Blockchain 
     RPC_URL = os.getenv("RPC_URL", "https://rpc.ankr.com/eth_goerli")
     CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0xYourContractAddressHere")
-    AGENT_PRIVATE_KEY = os.getenv("AGENT_PRIVATE_KEY", "0xYourPrivateKeyHere")  
+    PRIVATE_KEY = os.getenv("PRIVATE_KEY", "0xYourPrivateKeyHere")  
     BOUNTY_HUB_ABI = os.getenv("BOUNTY_HUB_ABI", "./abis/BountyHub.json")
     COMMITMENT_SALT = os.getenv("COMMITMENT_SALT", "your_salt_here")
     

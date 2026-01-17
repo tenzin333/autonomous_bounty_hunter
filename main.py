@@ -83,7 +83,7 @@ async def start_hunt(repo_full_name):
             provider_url=Config.RPC_URL,
             private_key=Config.PRIVATE_KEY,
             contract_address=Config.CONTRACT_ADDRESS,
-            contract_abi_path=Config.BOUNTY_HUB_ABI
+            contract_abi_path=Config.ABI_PATH
         )
         log.info(f"Blockchain Logger connected to {Config.RPC_URL}")
     except Exception as e:
@@ -212,7 +212,8 @@ async def start_hunt(repo_full_name):
                     file=file_name,
                     vuln=vuln_name, 
                     salt=blockchain.salt,
-                    commit_hash=tx_hash
+                    commit_hash=tx_hash,
+                    pr_url = pr_url
                 )
                 log.info(f"On-chain commitment confirmed: {tx_hash}")
 

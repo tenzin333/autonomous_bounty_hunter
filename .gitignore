@@ -4,6 +4,7 @@ reports/
 venv/
 .venv/
 env/
+out/
 env_*/
 __pycache__/
 *.pyc

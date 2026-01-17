@@ -13,21 +13,32 @@ class BlockchainLogger:
         self.private_key = private_key
         self.salt = Config.COMMITMENT_SALT
 
-        # Load ABI JSON from file
-        with open(contract_abi_path) as f:
-            abi = json.load(f)
-
-        # Create contract instance
+        # Load ABI JSON from fil
+		# --- THE FIX IS HERE ---
+        try:
+            with open(contract_abi_path, "r") as f:
+                artifact = json.load(f)
+                
+                # Extract the ABI correctly from the Foundry dictionary
+                if isinstance(artifact, dict) and "abi" in artifact:
+                    self.abi = artifact["abi"]
+                else:
+                    self.abi = artifact  # Fallback if it's already a list
+        except Exception as e:
+            raise Exception(f"Failed to parse ABI JSON: {e}")
+        # -----------------------e
+        
+		# Create contract instance
         self.contract = self.w3.eth.contract(
             address=Web3.to_checksum_address(contract_address),
-            abi=abi
+            abi=self.abi
         )
 
     def log_finding(self, repo_url, file_path, vuln_type):
         raw_data = f"{repo_url}:{file_path}:{vuln_type}:{self.salt}"
         finding_hash = self.w3.keccak(text=raw_data)
 
-        tx = self.contract.functions.commitFinding(finding_hash).build_transaction({
+        tx = self.contract.functions.createBounty(finding_hash).build_transaction({
             'from': self.account.address,
             'nonce': self.w3.eth.get_transaction_count(self.account.address),
             'gas': 200000,

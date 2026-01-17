@@ -7,7 +7,7 @@ w3 = Web3(Web3.HTTPProvider(Config.RPC_URL))
 address = Config.CONTRACT_ADDRESS
 
 # Simple ABI for just the create function
-abi = [{"type":"function","name":"createBounty","inputs":[{"name":"_targetHash","type":"bytes32"}],"stateMutability":"payable"}]
+abi = Config.ABI_PATH
 
 contract = w3.eth.contract(address=address, abi=abi)
 

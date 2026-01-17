@@ -212,7 +212,8 @@ async def start_hunt(repo_full_name):
                     file=file_name,
                     vuln=vuln_name, 
                     salt=blockchain.salt,
-                    commit_hash=tx_hash
+                    commit_hash=tx_hash,
+                    pr_url = pr_url
                 )
                 log.info(f"On-chain commitment confirmed: {tx_hash}")
 

@@ -1,27 +1,43 @@
-import streamlit as st
-import pandas as pd
-import psycopg2
-import os
-from core.config import Config
+from onchain.script.strike_bounty import strike_bounty  # Import your logic
 
-st.set_page_config(page_title="Gemini Bounty Center", layout="wide")
+# ... (your existing metrics and dataframe code) ...
 
-# Connect to the same DB the Agent uses
-conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+st.divider()
+st.subheader("🎯 Action Center")
 
-st.title("Autonomous Bounty Hunter")
-st.markdown("### Real-Time Security Operations Dashboard")
+# Filter for items that are potentially ready to be struck
+# We check if status is 'PR_Submitted' (or your equivalent for 'not yet struck')
+pending_actions = df[df['status'] == 'PR_Submitted']
 
-# Summary Metrics
-df = pd.read_sql("SELECT * FROM findings", conn)
-c1, c2, c3 = st.columns(3)
-c1.metric("Total Vulnerabilities", len(df))
-c2.metric("Active PRs", len(df[df['status'] == 'PR_Submitted']))
-c3.metric("Bounties Claimed", len(df[df['status'] == 'Revealed']))
-
-# Visualizing the Hunt
-st.subheader("Latest Activity Feed")
-st.dataframe(df.sort_values(by='timestamp', ascending=False), use_container_width=True)
-
-# Interactive Map or Graph (Optional Portfolio Flair)
-st.info("Agent is currently scanning")
+if pending_actions.empty:
+    st.write("No pending bounties to strike. Keep hunting!")
+else:
+    for _, row in pending_actions.iterrows():
+        with st.expander(f"Action Required: {row['repo']} - {row['vuln_type']}"):
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                st.write(f"**PR URL:** {row['pr_url']}")
+                st.write(f"**On-chain Hash:** `{row['commit_hash']}`")
+            
+            with col2:
+                # This button triggers your Web3 logic!
+                if st.button("Strike Bounty", key=f"btn_{row['id']}"):
+                    with st.spinner("Executing Smart Contract Call..."):
+                        try:
+                            # 1. Call the function
+                            tx_hash = strike_bounty(row['id'], "YOUR_SECRET_OR_LOGIC")
+                            
+                            # 2. Update the Database so it disappears from 'Pending'
+                            with conn.cursor() as cur:
+                                cur.execute(
+                                    "UPDATE findings SET status = 'Revealed' WHERE id = %s", 
+                                    (row['id'],)
+                                )
+                            conn.commit()
+                            
+                            st.success(f"Claimed! Tx: {tx_hash[:10]}...")
+                            st.balloons()
+                            st.rerun() # Refresh UI to update metrics
+                        except Exception as e:
+                            st.error(f"Error: {e}")

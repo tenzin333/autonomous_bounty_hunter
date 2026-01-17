@@ -26,7 +26,7 @@ def main():
     st.markdown("### Real-Time Security Operations Dashboard")
 
     # 📊 Load Data
-    query = "SELECT id, repo, vuln_type, pr_url, commit_hash, status, timestamp, secret_hash FROM findings"
+    query = "SELECT id, repo, vuln_type, pr_url, commit_hash, status, timestamp, salt FROM findings"
     df = pd.read_sql(query, conn)
 
     # 📈 Summary Metrics
@@ -56,7 +56,7 @@ def main():
                         with st.spinner("Broadcasting to Blockchain..."):
                             try:
                                 # Trigger Web3 transaction
-                                tx_hash = strike_bounty(row['id'], row['secret_hash'])
+                                tx_hash = strike_bounty(row['id'], row['commit_hash'])
                                 
                                 # Update Database
                                 with conn.cursor() as cur:

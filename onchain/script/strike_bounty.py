@@ -6,8 +6,18 @@ from core.config import Config
 w3 = Web3(Web3.HTTPProvider(Config.RPC_URL))
 
 # 📜 Load ABI
-with open(Config.ABI_PATH, "r") as f:
-    contract_abi = json.load(f)
+try:
+    with open(Config.ABI_PATH, "r") as f:
+        artifact = json.load(f)
+        
+        # Extract the ABI correctly from the Foundry dictionary
+        if isinstance(artifact, dict) and "abi" in artifact:
+            contract_abi = artifact["abi"]
+        else:
+            contract_abi = artifact  # Fallback if it's already a list
+except Exception as e:
+    raise Exception(f"Failed to parse ABI JSON: {e}")
+
 
 contract = w3.eth.contract(address=Config.CONTRACT_ADDRESS, abi=contract_abi)
 

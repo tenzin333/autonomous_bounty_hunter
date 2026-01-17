@@ -30,7 +30,7 @@ class Config:
     
     # Credentials
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+    GH_TOKEN = os.getenv("GH_TOKEN")
     
     # Paths
     WORKSPACE_DIR = "./workspaces"

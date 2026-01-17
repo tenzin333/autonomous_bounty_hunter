@@ -131,7 +131,7 @@ pip install -r requirements.txt
 
 ``` env
 OPENAI_API_KEY=your_openai_key
-GITHUB_TOKEN=your_github_token
+GH_TOKEN=your_github_token
 AGENT_PRIVATE_KEY=your_wallet_private_key
 RPC_URL=https://polygon-amoy.infura.io/v3/<project_id>
 CONTRACT_ADDRESS=0xd22
@@ -143,8 +143,12 @@ AGENT_PRIVATE_KEY=adsfdfsd
 TRIAGE_MODEL=llama-3.1-8b-instant
 PATCHER_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 
+# LLM 
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=gsk_your_key
+
 # Runtime Mode
-ENVIRONMENT=development
+ENVIRONMENT=development/production
 
 # PostgreSQL
 DB_URL=postgres://user:pass@host:port/defaultdb?sslmode=require

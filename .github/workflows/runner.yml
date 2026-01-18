@@ -53,7 +53,7 @@ jobs:
           CONTRACT_ADDRESS: ${{ env.DEPLOYED_ADDR }}
           COMMITMENT_SALT: ${{ secrets.COMMITMENT_SALT }}
           ABI_PATH: ${{ secrets.ABI_PATH }}
-          DB_URL: ${{ secrets.DB_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

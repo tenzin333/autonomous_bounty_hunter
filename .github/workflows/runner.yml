@@ -24,17 +24,23 @@ jobs:
           version: nightly
 
       # 👇 REQUIRED - build ABI/bytecode
+      # 1. Build precisely (ignores the 'out' folder)
       - name: Build Contracts
-        run: forge build --root .
+        run: forge build --contracts onchain/contracts --force
 
+      # 2. Deploy using the SOURCE file path, not the artifact path
       - name: Start Anvil & Deploy Contract
         run: |
           anvil --silent &
           sleep 5
+          # Use the format <SOURCE_FILE>:<CONTRACT_NAME>
           DEPLOY_LOG=$(forge create onchain/contracts/BountyBoard.sol:BountyBoard \
             --rpc-url http://127.0.0.1:8545 \
             --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+          
           echo "$DEPLOY_LOG"
+          
+          # Extract the address safely
           ADDR=$(echo "$DEPLOY_LOG" | grep "Deployed to:" | awk '{print $3}')
           echo "DEPLOYED_ADDR=$ADDR" >> $GITHUB_ENV
 

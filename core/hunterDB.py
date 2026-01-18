@@ -6,6 +6,8 @@ class HunterDB:
     def __init__(self):
         # On the cloud, we pull the DB URL from environment variables
         self.db_url = Config.DATABASE_URL
+        print(f"Connecting to database at {self.db_url}")
+        
         self.conn = psycopg2.connect(self.db_url)
         self.create_table()
 

@@ -18,4 +18,5 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PYTHONPATH: .
         run: python onchain/script/strike_bounty.py

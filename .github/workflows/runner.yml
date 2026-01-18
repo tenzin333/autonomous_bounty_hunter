@@ -27,4 +27,5 @@ jobs:
           LLM_API_KEY: {{secrets.LLM_API_KEY}}
           ENVIRONMENT: production
           TARGET_REPO: {{secrets.TARGET_REPO}}
+          PYTHONPATH: .
         run: python main.py

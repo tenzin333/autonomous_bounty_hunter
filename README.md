@@ -151,7 +151,7 @@ LLM_API_KEY=gsk_your_key
 ENVIRONMENT=development/production
 
 # PostgreSQL
-DB_URL=postgres://user:pass@host:port/defaultdb?sslmode=require
+DATABASE_URL=postgres://user:pass@host:port/defaultdb?sslmode=require
 
 # Target Repo
 TARGET_REPO=tenzin333/jobpilot2.0

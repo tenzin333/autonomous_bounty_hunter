@@ -8,7 +8,7 @@ jobs:
   strike:
     runs-on: ubuntu-latest
     # 👇 REQUIRED: This unlocks your 'Environment Secrets'
-    environment: production 
+    environment: Autonomous Bounty Hunter env 
     
     steps:
       - uses: actions/checkout@v4

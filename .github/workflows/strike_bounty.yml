@@ -11,7 +11,7 @@ jobs:
     # 👇 1. THIS IS CRITICAL: If your secrets are in an 'Environment', 
     # the name here must match exactly (e.g., 'production' or 'main').
     # If your secrets are just 'Repository Secrets', you can remove this line.
-    environment: production 
+    environment: Autonomous Bounty Hunter env 
 
     steps:
       - uses: actions/checkout@v4

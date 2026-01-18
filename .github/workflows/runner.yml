@@ -3,29 +3,36 @@ on:
   schedule:
     - cron: '0 * * * *' # Every hour
   workflow_dispatch:      # Manual trigger button
+
 jobs:
   strike:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install Dependencies
         run: pip install -r requirements.txt
-      - name: Run Striker
+
+      - name: Run Hunter Agent
         env:
-          TRIAGE_MODEL: {{secrets.TRIAGE_MODEL}}
-          PATCHER_MODEL: {{secrets.PATCHER_MODEL}}
-          RPC_URL: {{secrets.RPC_URL}}
-          PRIVATE_KEY: {{secrets.PRIVATE_KEY}}
-          CONTRACT_ADDRESS: {{secrets.CONTRACT_ADDRESS}}
-          COMMITMENT_SALT: {{secrets.COMMITMENT_SALT}}
-          ABI_PATH: {{secrets.ABI_PATH}}
-          DB_URL: {{secrets.DB_URL}}
-          LLM_BASE_URL: {{secrets.LLM_BASE_URL}}
-          LLM_API_KEY: {{secrets.LLM_API_KEY}}
+          # Fix: Added the $ and corrected the secret names
+          TRIAGE_MODEL: ${{ secrets.TRIAGE_MODEL }}
+          PATCHER_MODEL: ${{ secrets.PATCHER_MODEL }}
+          RPC_URL: ${{ secrets.RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          COMMITMENT_SALT: ${{ secrets.COMMITMENT_SALT }}
+          ABI_PATH: ${{ secrets.ABI_PATH }}
+          DB_URL: ${{ secrets.DB_URL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          TARGET_REPO: ${{ secrets.TARGET_REPO }}
           ENVIRONMENT: production
-          TARGET_REPO: {{secrets.TARGET_REPO}}
-          PYTHONPATH: .
+          PYTHONPATH: . # Helps find the 'core' folder
+        # Make sure main.py is in the root. If not, use 'python folder/main.py'
         run: python main.py

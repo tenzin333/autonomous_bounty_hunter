@@ -18,22 +18,38 @@ jobs:
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
+      # 🏗️ Step 1: Install Foundry (Forge/Anvil/Cast)
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      #  Step 2: Start Anvil in background & Deploy Contract
+      - name: Start Anvil and Deploy
+        run: |
+          anvil --silent & 
+          sleep 5 # Wait for the local chain to boot
+          # We deploy using a default Anvil private key
+          DEPLOY_LOG=$(forge create src/BountyBoard.sol:BountyBoard --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+          echo "$DEPLOY_LOG"
+          # Dynamically capture the contract address for the Hunter script
+          ADDR=$(echo "$DEPLOY_LOG" | grep "Deployed to:" | awk '{print $3}')
+          echo "DEPLOYED_ADDR=$ADDR" >> $GITHUB_ENV
+
       - name: Run Hunter Agent
         env:
-          # Fix: Added the $ and corrected the secret names
           TRIAGE_MODEL: ${{ secrets.TRIAGE_MODEL }}
           PATCHER_MODEL: ${{ secrets.PATCHER_MODEL }}
           RPC_URL: ${{ secrets.RPC_URL }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          CONTRACT_ADDRESS: ${{ env.DEPLOYED_ADDR }}
           COMMITMENT_SALT: ${{ secrets.COMMITMENT_SALT }}
           ABI_PATH: ${{ secrets.ABI_PATH }}
           DB_URL: ${{ secrets.DB_URL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          TARGET_REPO: ${{ secrets.TARGET_REPO }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TARGET_REPO: ${{ secrets.TARGET_REPO }}
           ENVIRONMENT: production
-          PYTHONPATH: . # Helps find the 'core' folder
-        # Make sure main.py is in the root. If not, use 'python folder/main.py'
+          PYTHONPATH: . 
         run: python main.py

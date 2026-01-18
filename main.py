@@ -13,7 +13,7 @@ from core.scanner import Scanner
 from agents.attacker import AttackerAgent
 from agents.patcher import PatcherAgent
 from core.github_client import GitHubClient
-from onchain.script.web3 import BlockchainLogger
+from onchain.script.block_chain_logger import BlockchainLogger
 from core.config import Config
 from core.hunterDB import HunterDB as Database
 

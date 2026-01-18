@@ -30,7 +30,7 @@ jobs:
           anvil --silent & 
           sleep 5 # Wait for the local chain to boot
           # We deploy using a default Anvil private key
-          DEPLOY_LOG=$(forge create src/BountyBoard.sol:BountyBoard --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+          DEPLOY_LOG=$(forge create out/BountyBoard.sol:BountyBoard --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
           echo "$DEPLOY_LOG"
           # Dynamically capture the contract address for the Hunter script
           ADDR=$(echo "$DEPLOY_LOG" | grep "Deployed to:" | awk '{print $3}')

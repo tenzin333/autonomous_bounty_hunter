@@ -7,7 +7,9 @@ on:
 jobs:
   strike:
     runs-on: ubuntu-latest
-    environment: production
+    # 👇 REQUIRED: This unlocks your 'Environment Secrets'
+    environment: production 
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -17,39 +19,32 @@ jobs:
           python-version: '3.12'
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install psycopg2-binary
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
 
-      # 👇 REQUIRED - build ABI/bytecode
-      # 1. Build precisely (ignores the 'out' folder)
       - name: Build Contracts
         run: forge build --contracts onchain/contracts --force
 
-      # 2. Deploy using the SOURCE file path, not the artifact path
       - name: Start Anvil & Deploy Contract
         run: |
           anvil --silent &
           sleep 5
-          # Use the format <SOURCE_FILE>:<CONTRACT_NAME>
           DEPLOY_LOG=$(forge create onchain/contracts/BountyBoard.sol:BountyBoard \
             --rpc-url http://127.0.0.1:8545 \
             --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
           
-          echo "$DEPLOY_LOG"
-          
-          # Extract the address safely
           ADDR=$(echo "$DEPLOY_LOG" | grep "Deployed to:" | awk '{print $3}')
           echo "DEPLOYED_ADDR=$ADDR" >> $GITHUB_ENV
 
       - name: Run Hunter Agent
-        run: |
-            echo "Checking DATABASE_URL length: ${#DB_CHECK}"
-            if [ -z "$DB_CHECK" ]; then echo "DATABASE_UR
         env:
+          # All these come from Settings > Secrets and variables > Actions > Secrets (Environment tab)
           TRIAGE_MODEL: ${{ secrets.TRIAGE_MODEL }}
           PATCHER_MODEL: ${{ secrets.PATCHER_MODEL }}
           RPC_URL: http://127.0.0.1:8545
@@ -64,4 +59,12 @@ jobs:
           TARGET_REPO: ${{ secrets.TARGET_REPO }}
           ENVIRONMENT: production
           PYTHONPATH: .
-        run: python main.py
+        run: |
+            # Clean Debug: Check if the secret is loaded
+            echo "Verifying DATABASE_URL..."
+            if [ -z "$DATABASE_URL" ]; then 
+              echo "❌ ERROR: DATABASE_URL is still empty!"
+              exit 1
+            fi
+            echo "✅ Secret found (Length: ${#DATABASE_URL}). Starting Hunter Agent..."
+            python main.py

@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -23,15 +23,15 @@ jobs:
         with:
           version: nightly
 
-      # 👇 NEW
+      # 👇 REQUIRED - build ABI/bytecode
       - name: Build Contracts
-        run: forge build
+        run: forge build --root .
 
-      - name: Start Anvil & Deploy
+      - name: Start Anvil & Deploy Contract
         run: |
           anvil --silent &
           sleep 5
-          DEPLOY_LOG=$(forge create out/BountyBoard.sol:BountyBoard \
+          DEPLOY_LOG=$(forge create out/BountyBoard.sol/BountyBoard.json:BountyBoard \
             --rpc-url http://127.0.0.1:8545 \
             --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
           echo "$DEPLOY_LOG"
@@ -46,7 +46,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           CONTRACT_ADDRESS: ${{ env.DEPLOYED_ADDR }}
           COMMITMENT_SALT: ${{ secrets.COMMITMENT_SALT }}
-          ABI_PATH: out/BountyBoard.sol/BountyBoard.json
+          ABI_PATH: ${{ secrets.ABI_PATH }}
           DB_URL: ${{ secrets.DB_URL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}

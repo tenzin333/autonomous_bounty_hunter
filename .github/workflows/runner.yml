@@ -45,6 +45,9 @@ jobs:
           echo "DEPLOYED_ADDR=$ADDR" >> $GITHUB_ENV
 
       - name: Run Hunter Agent
+        run: |
+            echo "Checking DATABASE_URL length: ${#DB_CHECK}"
+            if [ -z "$DB_CHECK" ]; then echo "DATABASE_UR
         env:
           TRIAGE_MODEL: ${{ secrets.TRIAGE_MODEL }}
           PATCHER_MODEL: ${{ secrets.PATCHER_MODEL }}

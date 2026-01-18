@@ -11,6 +11,7 @@ def run_bot():
     while True:
         print("Bot is hunting...")
         # Replace this with your actual script execution
+        subprocess.run(["pip", "install", "-r", "requirements.txt"])
         subprocess.run(["python", "main.py"]) 
         time.sleep(3600) # Run once per hour
 

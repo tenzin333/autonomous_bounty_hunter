@@ -12,6 +12,8 @@ RUN curl -L https://foundry.paradigm.xyz | bash && \
 ENV PATH="/root/.foundry/bin:${PATH}"
 
 WORKDIR /app
+# This line fixes the ModuleNotFoundError for all scripts
+ENV PYTHONPATH="/app"
 
 # Install Python requirements
 COPY requirements.txt .

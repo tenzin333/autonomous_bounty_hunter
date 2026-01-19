@@ -1,21 +1,20 @@
 #!/bin/bash
+export PYTHONPATH=$PYTHONPATH:/app
 
-# 1. Start Anvil
+# 1. Start Anvil (Background)
 anvil --host 127.0.0.1 --port 8545 &
 sleep 5
 
-# 2. Fix Foundry Artifacts & Deploy
-forge clean
-# Replace 'BountyBoard' with the actual Script name if it's different
-echo "🚀 Deploying Contract..."
+# 2. Deploy Contract
 forge create onchain/contracts/BountyBoard.sol:BountyBoard \
     --rpc-url http://127.0.0.1:8545 \
     --private-key "$PRIVATE_KEY"
 
-# 3. Start Agents (Using relative paths from /app)
-# Check if your file is actually at 'onchain/script/strikerbounty.py'
-echo "🤖 Starting Agents..."
+# 3. Start Agents
+# We run main.py in the background
 python3 main.py &
-python3 onchain/script/strike_bounty.py &
 
-wait -n
+# IMPORTANT: We run the last agent in the FOREGROUND (no &)
+# This keeps the container alive as long as this agent is running.
+echo "🤖 Starting Strike Bounty Agent..."
+python3 onchain/script/strike_bounty.py

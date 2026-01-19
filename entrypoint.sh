@@ -16,5 +16,5 @@ python3 main.py &
 
 # IMPORTANT: We run the last agent in the FOREGROUND (no &)
 # This keeps the container alive as long as this agent is running.
-echo "🤖 Starting Strike Bounty Agent..."
-python3 onchain/script/strike_bounty.py
+# echo "🤖 Starting Strike Bounty Agent..."
+# python3 onchain/script/strike_bounty.py

@@ -9,6 +9,7 @@ sleep 5
 forge create onchain/contracts/BountyBoard.sol:BountyBoard \
     --rpc-url http://127.0.0.1:8545 \
     --private-key "$PRIVATE_KEY"
+    --broadcast
 
 # 3. Start Agents
 # We run main.py in the background

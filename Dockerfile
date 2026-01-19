@@ -1,16 +1,29 @@
-# Use a lightweight Python image
-FROM python:3.11-slim
+# Use Python 3.12 slim for a small footprint
+FROM python:3.12-slim
 
-# Install system dependencies
+# Install system dependencies for Foundry, Psycopg2, and Flask
 RUN apt-get update && apt-get install -y \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+    curl git libpq-dev gcc procps && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Semgrep and project requirements
-RUN pip install semgrep openai python-dotenv  requests boto3 pandas openai  web3 eth-account streamlit psycopg2-binary sqlalchemy pandas requests uvicorn
+# Install Foundry (Forge/Anvil)
+RUN curl -L https://foundry.paradigm.xyz | bash && \
+    /root/.foundry/bin/foundryup
+ENV PATH="/root/.foundry/bin:${PATH}"
 
 WORKDIR /app
+
+# Install Python requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project files
 COPY . .
 
-# Entry point for the Fargate Task
-CMD ["python", "main.py"]
+# Ensure entrypoint is executable
+RUN chmod +x /app/entrypoint.sh
+
+# Render expects the service to listen on a port
+EXPOSE 10000
+
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]

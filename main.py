@@ -16,6 +16,20 @@ from core.github_client import GitHubClient
 from onchain.script.block_chain_logger import BlockchainLogger
 from core.config import Config
 from core.hunterDB import HunterDB as Database
+from flask import Flask
+import threading
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def health():
+    return "Bounty Hunter is active", 200
+
+def run_health_check():
+    # Render automatically injects the PORT environment variable
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
 # Standard technical logging
 logging.basicConfig(
@@ -224,5 +238,7 @@ async def start_hunt(repo_full_name):
     log.info("--------------------------------------------------")
 
 if __name__ == "__main__":
-    asyncio.run(start_hunt(Config.TARGET_REPO))
-
+    threading.Thread(target=run_health_check, daemon=True).start()
+    print("=== Autonomous Bounty Hunter ===")
+    target_repo = input("Enter the target repository (owner/repo): ")
+    asyncio.run(start_hunt(target_repo))

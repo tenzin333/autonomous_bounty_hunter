@@ -246,7 +246,7 @@ if __name__ == "__main__":
     
     # 2. Get the target repository from Environment Variables
     # Set 'TARGET_REPO' in the Render Dashboard (e.g., "bitcoin/bitcoin")
-    target_repo = os.environ.get("TARGET_REPO")
+    target_repo = Config.TARGET_REPO
     
     if not target_repo:
         log.error("CRITICAL: No TARGET_REPO environment variable found.")

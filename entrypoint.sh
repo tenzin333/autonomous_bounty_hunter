@@ -7,13 +7,14 @@ sleep 5
 # 2. Fix Foundry Artifacts & Deploy
 forge clean
 # Replace 'BountyBoard' with the actual Script name if it's different
-forge script onchain/contracts/BountyBoard.sol \
+echo "🚀 Deploying Contract..."
+forge create onchain/contracts/BountyBoard.sol:BountyBoard \
     --rpc-url http://127.0.0.1:8545 \
-    --broadcast \
     --private-key "$PRIVATE_KEY"
 
 # 3. Start Agents (Using relative paths from /app)
 # Check if your file is actually at 'onchain/script/strikerbounty.py'
+echo "🤖 Starting Agents..."
 python3 main.py &
 python3 onchain/script/strike_bounty.py &
 

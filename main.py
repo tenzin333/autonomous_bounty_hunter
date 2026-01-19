@@ -238,7 +238,32 @@ async def start_hunt(repo_full_name):
     log.info("--------------------------------------------------")
 
 if __name__ == "__main__":
+    # 1. Start the Flask Health Server in a background thread
+    # This satisfies Render's port check so your service stays "Live"
     threading.Thread(target=run_health_check, daemon=True).start()
+    
     print("=== Autonomous Bounty Hunter ===")
-    target_repo = input("Enter the target repository (owner/repo): ")
-    asyncio.run(start_hunt(target_repo))
+    
+    # 2. Get the target repository from Environment Variables
+    # Set 'TARGET_REPO' in the Render Dashboard (e.g., "bitcoin/bitcoin")
+    target_repo = os.environ.get("TARGET_REPO")
+    
+    if not target_repo:
+        log.error("CRITICAL: No TARGET_REPO environment variable found.")
+        log.info("Please set TARGET_REPO in the Render Dashboard Environment tab.")
+        # We use an infinite loop here to prevent the container from crashing 
+        # so you can read the logs and fix the setting.
+        while True:
+            time.sleep(3600)
+    else:
+        log.info(f"🚀 Starting hunt for: {target_repo}")
+        try:
+            asyncio.run(start_hunt(target_repo))
+        except Exception as e:
+            log.error(f"Hunter crashed during execution: {e}")
+        
+        # 3. Keep the container alive after the hunt finishes
+        # This allows you to inspect logs or wait for the next cron-job trigger
+        log.info("Hunt cycle finished. Staying alive for health checks...")
+        while True:
+            time.sleep(3600)

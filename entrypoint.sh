@@ -1,18 +1,20 @@
 #!/bin/bash
 
-# 1. Start Anvil in background (internal only)
+# 1. Start Anvil
 anvil --host 127.0.0.1 --port 8545 &
 sleep 5
 
-# 2. Deploy Contract
-forge script onchain/contracts/BountyBoard.sol:BountyBoard \
+# 2. Fix Foundry Artifacts & Deploy
+forge clean
+# Replace 'BountyBoard' with the actual Script name if it's different
+forge script onchain/contracts/BountyBoard.sol \
     --rpc-url http://127.0.0.1:8545 \
     --broadcast \
     --private-key "$PRIVATE_KEY"
 
-# 3. Launch Python Agents (main.py must include the Flask server)
+# 3. Start Agents (Using relative paths from /app)
+# Check if your file is actually at 'onchain/script/strikerbounty.py'
 python3 main.py &
-python3 onchain/script/strikerbounty.py &
+python3 onchain/script/strike_bounty.py &
 
-# Wait for processes
 wait -n

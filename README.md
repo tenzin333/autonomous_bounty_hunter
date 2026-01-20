@@ -135,6 +135,3 @@ We welcome contributions! Please see `docs/CONTRIBUTING.md` for guidelines on ho
 ## 📌 Disclaimer
 
 While the fixes are automated, **manual review** of the proposed pull requests is **required** before deploying to production. Ensure all changes are thoroughly vetted.
-```
-
----

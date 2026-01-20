@@ -1,204 +1,140 @@
-# 🏹 Autonomous Bounty Hunter
+# 🛡️ Autonomous Bounty Hunter
 
-An autonomous, multi-agent security system that scans GitHub
-repositories for vulnerabilities, generates verified patches, and
-secures findings using a **Blockchain Commit-Reveal** scheme.
+**Autonomous Bounty Hunter** is an AI-driven security automation system designed to scan GitHub repositories for vulnerabilities, validate findings using AI, apply verified patches, and submit professional pull requests with cryptographic, on-chain attestations for every confirmed fix.
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Python: 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![AI:
-Multi-Agent](https://img.shields.io/badge/AI-Agentic_Workflows-purple.svg)
-![Blockchain:
-Web3/Solidity](https://img.shields.io/badge/Blockchain-Ethereum/Polygon-silver.svg)
+---
 
-------------------------------------------------------------------------
+## 🚀 Project Overview
 
-## 🚀 Overview
+The **Autonomous Bounty Hunter** automates the process of discovering, validating, and remediating vulnerabilities in GitHub repositories. Key features include:
 
-The **Autonomous Bounty Hunter** is a decentralized security
-firm-in-a-box. It automates the end-to-end bug bounty pipeline---from
-discovery to patch generation and verifiable credit assignment.
+1. **Clones a target GitHub repository** for scanning.
+2. **Scans the codebase** using **Semgrep** for known security issues.
+3. **Validates findings** using an **AI attacker agent** to confirm real vulnerabilities.
+4. **Generates secure patches** to fix the identified vulnerabilities.
+5. **Re-verifies fixes** by performing regression scanning to ensure no new issues are introduced.
+6. **Pushes changes** and opens a professional **pull request** to the original repository.
+7. **Logs verified findings on-chain** for a tamper-proof proof-of-work.
+8. **Executes an on-chain bounty claim** to ensure that identified vulnerabilities are rewarded.
 
-### 🧩 The Problem
+A lightweight **Flask server** is included to perform health checks and support containerized or local deployments.
 
-Traditional bug bounty workflows suffer from: - Slow triage and delayed
-payouts\
-- **Bounty sniping** (someone rushes a public fix ahead of the original
-finder) - Missing credit due to maintainers forgetting or refusing to
-compensate
+---
 
-### 🎯 The Solution
+## 💡 Why This Project Is Useful
 
-This project solves these issues with: 1. **Autonomous Detection**\
-Uses AST + static analysis + LLM triage to find real vulnerabilities. 2.
-**Verified Patching**\
-Generates minimal, safe, PR-ready fixes to vulnerable repositories. 3.
-**Immutable Proof of Discovery**\
-A blockchain commit-reveal pattern proves **who found the bug first**,
-preventing theft and enabling trust.
+- **AI-powered vulnerability validation** ensures high accuracy in identifying real issues.
+- **Fully automated remediation workflow** reduces manual effort and error-prone tasks.
+- **GitHub-native pull request automation** ensures seamless integration with existing workflows.
+- **Post-patch verification** ensures patches do not introduce new issues.
+- **Blockchain-backed audit trail** provides a tamper-proof record of all actions, from vulnerability discovery to bounty claims.
+- **Automated bounty claiming** simplifies the process of earning rewards for identifying vulnerabilities.
+- **Cloud-friendly architecture** supports long-running deployments and scalability.
 
-------------------------------------------------------------------------
+---
 
-## 🧠 System Architecture
+## 🧰 Getting Started
 
-The system is composed of three major layers:
+### Prerequisites
 
-### 1. Multi-Agent Intelligence
+Before you can run **Autonomous Bounty Hunter**, ensure you have the following prerequisites installed:
 
--   **Agent A -- The Attacker**\
-    Scans repositories using Semgrep & heuristics, sends candidates to
-    an LLM for exploitability validation.
--   **Agent B -- The Patcher**\
-    Contextualizes the vulnerability and generates a safe, minimal,
-    non-breaking fix.
+#### System & Tooling
 
-### 2. Trust & Blockchain Layer (Commit-Reveal)
+- **Python 3.9+**
+- **Git**
+- **Semgrep**: Install via `pip install semgrep`
+- **GitHub account** and **access token** for repo access
 
-Ensures credit is provable and timestamped. - **Commit:**\
-Hash `(repo + file + vuln + salt) → keccak256`, store on-chain before
-submitting PR. - **Reveal:**\
-After merge, publish raw contents + salt to validate the earlier
-commit. - Reputation becomes cryptographically verifiable.
+#### Blockchain Environment (Required)
 
-### 3. Cloud Execution + Dashboard
+This project requires an **Ethereum-compatible blockchain** to log findings and claim bounties.
 
--   **Workers:** Dockerized job runners (Render, Koyeb, Fargate, or
-    local cron/systemd)
--   **Database:** PostgreSQL stores active hunts + salts + commits
--   **UI:** Streamlit dashboard for visibility into hunts, PRs, and
-    on-chain verification
+For local development, we recommend using **Foundry** for blockchain deployment:
 
-------------------------------------------------------------------------
+- **Foundry**
+  - `anvil` — Local Ethereum node
+  - `forge` — Smart contract deployment & interaction
 
-## 🛠️ Tech Stack
+To install Foundry:
 
-**Core:**\
-Python 3.10+, AsyncIO
-
-**Security & Detection:**\
-Semgrep, AST scanning
-
-**AI Models:**\
-- GPT-4o, GPT-4o mini (default) - Pluggable support for Gemini &
-open-source LLMs
-
-**Blockchain:**\
-Web3.py, Solidity Smart Contract\
-Tested on **Polygon Amoy Testnet**
-
-**Database:**\
-PostgreSQL (Aiven, Neon, Supabase)
-
-**Frontend:**\
-Streamlit UI dashboard
-
-**Deployment:**\
-Docker, GitHub Actions, crontab/Systemd/Task Scheduler
-
-------------------------------------------------------------------------
-
-## 📦 Installation & Setup
-
-### 🔑 Prerequisites
-
-You'll need: - Python **3.10+** - An LLM API key (OpenAI, Google,
-etc.) - GitHub Personal Access Token (with `repo` scope) - Ethereum
-private key with testnet funds - Access to a Polygon Amoy RPC
-
-------------------------------------------------------------------------
-
-### 1️⃣ Clone the Repository
-
-``` bash
-git clone https://github.com/tenzin333/autonomous_bounty_hunter.git
-cd autonomous_bounty_hunter
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
 ```
 
-### 2️⃣ Create & Activate a Virtual Environment
+#### Configuration
 
-``` bash
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-```
+Set up the following environment variables:
 
-### 3️⃣ Install Dependencies
-
-``` bash
-pip install -r requirements.txt
-```
-
-### 4️⃣ Create a `.env` File
-
-``` env
-OPENAI_API_KEY=your_openai_key
-GH_TOKEN=your_github_token
-AGENT_PRIVATE_KEY=your_wallet_private_key
-RPC_URL=https://polygon-amoy.infura.io/v3/<project_id>
-CONTRACT_ADDRESS=0xd22
-BOUNTY_HUB_ABI=./abis/BountyHub.json
-COMMITMENT_SALT=sfgsdfg
-AGENT_PRIVATE_KEY=adsfdfsd
-
-# Model Selection
+```bash
+TARGET_REPO=owner/repo
+GITHUB_TOKEN=ghp_xxx
+RPC_URL=http://127.0.0.1:8545
+PRIVATE_KEY=0x...
+CONTRACT_ADDRESS=0x...
+ABI_PATH=onchain/abi/Contract.json
 TRIAGE_MODEL=llama-3.1-8b-instant
 PATCHER_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
-
-# LLM 
+OPENAI_API_KEY=0x...
+GH_TOKEN=github_0x...
+COMMITMENT_SALT=ax...
+ABI_PATH=./out/BountyBoard.sol/BountyBoard.json
+DATABASE_URL=postgres://username:password@bounty-hunter-service-bounty-hunter-c5ed.e.aivencloud.com:24036/defaultdb?sslmode=require
 LLM_BASE_URL=https://api.groq.com/openai/v1
-LLM_API_KEY=gsk_your_key
-
-# Runtime Mode
-ENVIRONMENT=development/production
-
-# PostgreSQL
-DATABASE_URL=postgres://user:pass@host:port/defaultdb?sslmode=require
-
-# Target Repo
-TARGET_REPO=tenzin333/jobpilot2.0
-
+LLM_API_KEY=gsk_0x...
 ```
 
-------------------------------------------------------------------------
+### Running the Hunter
 
-## 📊 Dashboard & Monitoring
+We recommend using the **entrypoint script** for automatic setup and execution. It will:
 
-Launch dashboard locally:
+- Start a local **Anvil** node on `127.0.0.1:8545`.
+- Deploy the **BountyBoard** smart contract using **Forge**.
+- Launch the **Autonomous Bounty Hunter agent** (`main.py`).
+- Execute an on-chain **bounty claim** via `strike_bounty.py`.
+- Keep the process running while the agent performs its tasks.
 
-``` bash
-streamlit run dashboard.py
+To run the entrypoint script, execute:
+
+```bash
+bash entrypoint.sh
 ```
 
-Monitor: - Live scanning - PR states (open/merged/closed) - Commit +
-reveal status - Reputation growth
+> ⚠️ **Blockchain infrastructure is mandatory**. The hunter and bounty claim functionality will not work without a deployed contract.
 
-------------------------------------------------------------------------
+---
 
-## 🛡 Ethics & Responsible Use
+## 🧱 Architecture Overview
 
-This system is built for **white-hat security research** and authorized
-bounty programs. - Operates only on public repositories - Ensures
-discoverer receives provable credit - Prevents exploit hoarding and code
-theft
+The project is organized into the following key components:
 
-Do **not** run on unauthorized or private systems.
+- **core/**: Contains scanning logic, GitHub automation, configuration, and database management.
+- **agents/**: Includes the attacker and patcher AI agents that identify vulnerabilities and generate patches.
+- **onchain/**:
+  - **contracts/**: Smart contracts used for logging findings and claiming bounties.
+  - **script/**: Scripts for interacting with the blockchain (logging, claiming).
+- **entrypoint.sh**: Bootstraps the blockchain environment, deploys the smart contract, and starts the bounty hunter agent.
+- **main.py**: The orchestration entry point that manages the entire bounty hunting process.
 
-------------------------------------------------------------------------
+---
 
-## 📄 License
+## 🆘 Support
 
-Distributed under the MIT License.\
-See `LICENSE` for more information.
+- **GitHub Issues**: For reporting bugs or requesting new features.
+- **Review PRs carefully**: Always ensure automated pull requests are reviewed before merging into production.
 
-------------------------------------------------------------------------
+---
 
-## 🙌 Contributing
+## 👥 Contributing
 
-Ideas & PRs welcome!\
-Future work: - Distributed agent swarms - Automated CVE publication -
-Tokenized on-chain reputation
+We welcome contributions! Please see `docs/CONTRIBUTING.md` for guidelines on how to contribute to the project.
 
-------------------------------------------------------------------------
+---
 
-## ⭐ Support
+## 📌 Disclaimer
 
-Star the repo and fuel the next generation of autonomous hunters. 🔐
+While the fixes are automated, **manual review** of the proposed pull requests is **required** before deploying to production. Ensure all changes are thoroughly vetted.
+```
+
+---
